@@ -5,10 +5,13 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QVBoxLayout,
     QScrollArea,
+    QMenuBar,
+    QMenu,
+    QGridLayout
 )
-from PySide6.QtWidgets import QMenuBar, QMenu, QGridLayout
 
-from controlWidget import upgradeWidget
+
+from controlWidget import UpgradeWidget
 from PySide6.QtCore import Slot
 import os
 import canopen
@@ -38,27 +41,35 @@ datas = [
     (0x08, "核酸冷存", "cool_store"),
     (0x0C, "风道气压", "environment_monitor"),
     (0x22, "转运", "transporter"),
-    # 哪个是哪个
     (0x0E, "Q龙门架夹爪", "xz_claw"),
 ]
 
 
-class centerWidget(QWidget):
+class CenterWidget(QWidget):
     def __init__(self, parent=None):
-        super(centerWidget, self).__init__(parent)
+        super().__init__(parent)
 
+        # 连接can网络
         self.network = canopen.Network()
         # self.network.connect(channel="can0", bustype="socketcan")
 
+        # 存储UpgradeWidget类
         self.controlWidgets = {}
-        self.initUI()
 
+        # 获取当前文件所在目录的绝对路径
         current_dir = os.path.dirname(os.path.realpath(__file__))
+
+        # 创建一个本地节点，节点 ID 为 0x01，并加载 EDS 文件描述节点
         self.centerNode = canopen.LocalNode(0x01, f"{current_dir}/template.eds")
         self.network.add_node(self.centerNode)
+
+        # 设置一个回调函数，在收到 CANopen 网络写入数据时调用
         self.centerNode.add_write_callback(self.on_write)
 
+        self.initUI()
+
     def on_write(self, index, subindex, od, data):
+        # 解包收到的二进制数据，将其解析为两个 16 位无符号整数，分别为 value 和 cob_id
         value, cob_id = struct.unpack("HH", data)
 
         print(
@@ -76,36 +87,41 @@ class centerWidget(QWidget):
             w.on_reply(index, subindex, value)
         """
 
+
     def initUI(self):
         mainlayout = QGridLayout()
 
         for idx, data in enumerate(datas):
-            update = upgradeWidget(data[0], data[1], data[2], self.network, self)
+            # 创建每个固件，并根据cob_id存储在controlWidgets容器中
+            update = UpgradeWidget(data[0], data[1], data[2], self.network, self)
             self.controlWidgets[data[0]] = update
 
+            # 将固件添加入布局中
             mainlayout.addWidget(
                 update,
                 idx // 4,
                 idx % 4,
             )
-            # print(idx, data)
 
         self.setLayout(mainlayout)
 
+    # 用于标记该函数为槽函数，参数类型为str，接收固件文件路径
     @Slot(str)
     def on_path_update(self, path):
+        # 获取指定目录 path 下的所有文件和子目录的名称列表
         files = os.listdir(path)
-
+        # 过滤出所有以 .bin 结尾的文件
         bins = [file for file in files if file.endswith(".bin")]
-        # print(bins)
 
-        for bin in bins:
-            prefix = bin.split(".")[0]
-
+        for binFile in bins:
+            # 在 datas 列表中查找与前缀匹配的设备
+            prefix = binFile.split(".")[0]
             item = [data for data in datas if data[2] == prefix]
+
             if len(item) == 0:
                 continue
-            cid, _, _ = item[0]
-            # print(hex(cid), os.path.abspath(bin))
 
-            self.controlWidgets[cid].on_file_update(os.path.join(path, bin))
+            cid, _, _ = item[0]
+
+            # 更新每个固件的地址
+            self.controlWidgets[cid].on_file_update(os.path.join(path, binFile))
