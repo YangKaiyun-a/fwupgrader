@@ -12,7 +12,8 @@ except ImportError:
 from PySide6 import QtWidgets
 from PySide6.QtCore import Signal
 
-from centerWidget import CenterWidget
+from MainWindow import MainWindow
+
 
 
 # FwUpgrader类继承于QtWidgets.QMainWindow
@@ -62,16 +63,9 @@ class FwUpgrader(QtWidgets.QMainWindow):
 
 
 def main():
-    # 获取当前运行脚本所在的包的名称
-    app_module = sys.modules["__main__"].__package__
-
-    # 从指定包中获取元数据
-    metadata = importlib_metadata.metadata(app_module)
-
-    # 将元数据中Formal-Name字段作为应用程序的名称
-    QtWidgets.QApplication.setApplicationName(metadata["Formal-Name"])
+    QtWidgets.QApplication.setApplicationName("GP_UpdateTool")
 
     app = QtWidgets.QApplication(sys.argv)
-    main_window = FwUpgrader()
+    main_window = MainWindow()
 
     sys.exit(app.exec())

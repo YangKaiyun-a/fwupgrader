@@ -126,6 +126,8 @@ class UpgradeWidget(QWidget):
 
     def __init__(self, cob_id, name, tag, network, parent=None):
         super().__init__(parent)
+        self.old_version = None
+        self.new_version = None
         self.getVersionButton = None    # 固件更新按钮
         self.updateButton = None        # 获取版本按钮
         self.cob_id = cob_id            # 设备ID

@@ -9,9 +9,9 @@ from PySide6.QtWidgets import (
     QMenu,
     QGridLayout
 )
+from PySide6.QtCore import Qt, QTimer, QThread, Slot, Signal
+from src. fwupgrader. Model. Lower. controlWidget import UpgradeWidget
 
-
-from controlWidget import UpgradeWidget
 from PySide6.QtCore import Slot
 import os
 import canopen
@@ -44,11 +44,20 @@ datas = [
     (0x0E, "Q龙门架夹爪", "xz_claw"),
 ]
 
-
-class CenterWidget(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
+# 固件升级的主页面
+class LowerWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.centerNode = None
+        self.controlWidgets = None
+        self.network = None
+        self.init()
+        
+    def init(self):
+        self.initCanNetwork()
+        self.init_ui()
+        
+    def initCanNetwork(self):
         # 连接can网络
         self.network = canopen.Network()
         # self.network.connect(channel="can0", bustype="socketcan")
@@ -66,7 +75,23 @@ class CenterWidget(QWidget):
         # 设置一个回调函数，在收到 CANopen 网络写入数据时调用
         self.centerNode.add_write_callback(self.on_write)
 
-        self.initUI()
+    # 初始化ui
+    def init_ui(self):
+        mainLayout = QGridLayout()
+
+        for idx, data in enumerate(datas):
+            # 创建每个固件，并根据cob_id存储在controlWidgets容器中
+            update = UpgradeWidget(data[0], data[1], data[2], self.network, self)
+            self.controlWidgets[data[0]] = update
+
+            # 将固件添加入布局中
+            mainLayout.addWidget(
+                update,
+                idx // 4,
+                idx % 4,
+            )
+
+        self.setLayout(mainLayout)
 
     def on_write(self, index, subindex, od, data):
         # 解包收到的二进制数据，将其解析为两个 16 位无符号整数，分别为 value 和 cob_id
@@ -80,30 +105,6 @@ class CenterWidget(QWidget):
             if w.in_process:
                 w.on_reply(index, subindex, value)
                 break
-
-        """
-        w = self.controlWidgets.get(cob_id)
-        if w:
-            w.on_reply(index, subindex, value)
-        """
-
-
-    def initUI(self):
-        mainlayout = QGridLayout()
-
-        for idx, data in enumerate(datas):
-            # 创建每个固件，并根据cob_id存储在controlWidgets容器中
-            update = UpgradeWidget(data[0], data[1], data[2], self.network, self)
-            self.controlWidgets[data[0]] = update
-
-            # 将固件添加入布局中
-            mainlayout.addWidget(
-                update,
-                idx // 4,
-                idx % 4,
-            )
-
-        self.setLayout(mainlayout)
 
     # 用于标记该函数为槽函数，参数类型为str，接收固件文件路径
     @Slot(str)
