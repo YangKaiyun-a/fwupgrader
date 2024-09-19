@@ -220,8 +220,8 @@ class UpgradeModule(QWidget):
     def receive_module_reply(self, index, subindex, value):
         signal_manager.sigModuleReply.emit(True)
 
+    # 更新地址
     def on_file_update(self, path):
+        print(self.cob_id, path)
         self.fw = path
         self.new_version.setText(os.path.basename(path))
-
-        print(f"fw: {self.fw}")

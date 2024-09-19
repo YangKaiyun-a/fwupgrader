@@ -8,40 +8,13 @@ from PySide6.QtWidgets import (
     QPushButton
 )
 
+from src.fwupgrader.Data.DataSet import lower_module_datas
 from src.fwupgrader.Data.SignalManager import signal_manager
 from src.fwupgrader.Model.Lower.controlWidget import UpgradeModule
 
-from PySide6.QtCore import Slot, Signal
 import os
 import canopen
 import struct
-
-# cob_id, 名称， 前缀
-datas = [
-    (0x09, "扩增冷存", "amplification_cool"),
-    (0x07, "扩增DJ1", "amplification_dj1"),
-    (0x2E, "扩增DJ1电容", "dj_capacitance_1"),
-    (0x05, "提取DJ2", "extract_dj1"),
-    (0x2F, "扩增DJ1电容", "dj_capacitance_2"),
-    (0x24, "DP1夹爪", "dp1_jaw"),
-    (0x23, "DP1龙门架", "dp1_xy"),
-    (0x04, "DP8移液器", "dp8"),
-    (0x2D, "DP8气压电容检测", "pressure_capacitance"),
-    (0x03, "DP8龙门架", "dp8_xy"),
-    (0x06, "热封模块", "heat_seal"),
-    (0x26, "加热振荡1", "heat_shake_1"),
-    (0x27, "加热振荡2", "heat_shake_2"),
-    (0x28, "加热振荡3", "heat_shake_3"),
-    (0x29, "加热振荡4", "heat_shake_4"),
-    (0x2A, "加热振荡5", "heat_shake_5"),
-    (0x2B, "磁珠振荡", "heat_shake_6"),
-    (0x0A, "开关信号", "switch_signal"),
-    (0x0B, "紫外状态灯", "light_status"),
-    (0x08, "核酸冷存", "cool_store"),
-    (0x0C, "风道气压", "environment_monitor"),
-    (0x22, "转运", "transporter"),
-    (0x0E, "Q龙门架夹爪", "xz_claw"),
-]
 
 
 # 固件升级的主页面
@@ -57,6 +30,7 @@ class LowerWidget(QWidget):
     def init(self):
         self.initCanNetwork()
         self.init_ui()
+        self.init_connect()
 
     def initCanNetwork(self):
         # 连接can网络
@@ -93,7 +67,7 @@ class LowerWidget(QWidget):
 
         topLayout.addWidget(self.btnImport)
 
-        for idx, data in enumerate(datas):
+        for idx, data in enumerate(lower_module_datas):
             # 创建每个固件，并根据cob_id存储在ModuleList容器中
             update = UpgradeModule(data[0], data[1], data[2], self.network, self)
             self.ModuleList[data[0]] = update
@@ -111,6 +85,9 @@ class LowerWidget(QWidget):
 
         self.setLayout(mainLayout)
 
+    def init_connect(self):
+        signal_manager.sigUpdateLowerAdress.connect(self.onSigUpdateLowerAdress)
+
     def onBtnImportClicked(self):
         fd = QtWidgets.QFileDialog()
         fd.setFileMode(QtWidgets.QFileDialog.Directory)
@@ -122,11 +99,12 @@ class LowerWidget(QWidget):
             files = os.listdir(path)
             # 过滤出所有以 .bin 结尾的文件
             bins = [file for file in files if file.endswith(".bin")]
+            print(bins)
 
             for binFile in bins:
                 # 在 datas 列表中查找与前缀匹配的设备
                 prefix = binFile.split(".")[0]
-                item = [data for data in datas if data[2] == prefix]
+                item = [data for data in lower_module_datas if data[2] == prefix]
 
                 if len(item) == 0:
                     continue
@@ -135,6 +113,18 @@ class LowerWidget(QWidget):
 
                 # 更新每个固件的地址
                 self.ModuleList[cid].on_file_update(os.path.join(path, binFile))
+
+    def onSigUpdateLowerAdress(self, bin_file_dict):
+        for file_name, file_path in bin_file_dict.items():
+            item = [data for data in lower_module_datas if data[2] == file_name]
+
+            if len(item) == 0:
+                continue
+
+            cid, _, _ = item[0]
+
+            # 更新每个固件的地址
+            self.ModuleList[cid].on_file_update(file_path)
 
     def on_write(self, index, subindex, od, data):
         # 解包收到的二进制数据，将其解析为两个 16 位无符号整数，分别为 value 和 cob_id

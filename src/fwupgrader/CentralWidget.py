@@ -1,9 +1,14 @@
+import os
+
+from PySide6 import QtWidgets
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QStackedWidget,
     QPushButton,
-    QHBoxLayout, QApplication
+    QHBoxLayout,
+    QApplication,
+    QFileDialog
 )
 from src.fwupgrader.Data.SignalManager import signal_manager
 from src.fwupgrader.Model.MainWidget import MainWidget
@@ -11,10 +16,13 @@ from src.fwupgrader.Model.Upper.UpperWiget import UpperWiget
 from src.fwupgrader.Model.Middel.MiddelWiget import MiddelWiget
 from src.fwupgrader.Model.Lower.LowerWiget import LowerWidget
 
+from pathlib import Path
+
 
 class CentralWidget(QWidget):
     def __init__(self):
         super().__init__()
+        self.btnImport = None
         self.btnBack = None
         self.content_stack = None
         self.init()
@@ -32,6 +40,11 @@ class CentralWidget(QWidget):
         content_widget.setObjectName("content_widget")
         content_widget.setStyleSheet("QWidget#content_widget {border: 1px solid blue;}")
 
+        # 导入按钮
+        self.btnImport = QPushButton("导入升级包")
+        self.btnImport.setFixedSize(150, 50)
+        self.btnImport.clicked.connect(self.onBtnImportClicked)
+
         # 返回按钮
         self.btnBack = QPushButton("返回")
         self.btnBack.setFixedSize(150, 50)
@@ -40,6 +53,7 @@ class CentralWidget(QWidget):
         # top_widget布局
         top_hlayout = QHBoxLayout(top_widget)
         top_hlayout.addStretch()
+        top_hlayout.addWidget(self.btnImport)
         top_hlayout.addWidget(self.btnBack)
 
         # content_widget布局
@@ -66,6 +80,28 @@ class CentralWidget(QWidget):
 
         # 切换页面信号槽
         signal_manager.sigSwitchPage.connect(self.onSigSwitchPage)
+
+    # 导入按钮槽函数
+    def onBtnImportClicked(self):
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "选择升级文件包",
+            "",
+            QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks
+        )
+
+        if directory:
+            bin_file_dict = {}
+            bin_file_list = [file for file in Path(directory).rglob('*.bin')]
+
+            for bin_file in bin_file_list:
+                file_name_without_extension = bin_file.stem
+                file_absolute_path = str(bin_file.resolve())
+                bin_file_dict[file_name_without_extension] = file_absolute_path
+            signal_manager.sigUpdateLowerAdress.emit(bin_file_dict)
+
+        else:
+            print("未选择目录")
 
     # 返回按钮槽函数
     def onBtnBackClicked(self):

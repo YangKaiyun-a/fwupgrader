@@ -10,6 +10,8 @@ class SignalManager(QObject):
     sigProcessFinish = Signal()
     # 升级过程中固件的回复
     sigModuleReply = Signal(bool)
+    # 发送固件文件名与其绝对路径
+    sigUpdateLowerAdress = Signal(dict)
 
 
 signal_manager = SignalManager()
