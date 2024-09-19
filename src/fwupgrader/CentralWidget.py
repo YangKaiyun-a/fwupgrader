@@ -95,9 +95,13 @@ class CentralWidget(QWidget):
             bin_file_list = [file for file in Path(directory).rglob('*.bin')]
 
             for bin_file in bin_file_list:
+                # 文件命（不带后缀.bin）
                 file_name_without_extension = bin_file.stem
+                # 绝对路径
                 file_absolute_path = str(bin_file.resolve())
+                # 组合为字典
                 bin_file_dict[file_name_without_extension] = file_absolute_path
+
             signal_manager.sigUpdateLowerAdress.emit(bin_file_dict)
 
         else:

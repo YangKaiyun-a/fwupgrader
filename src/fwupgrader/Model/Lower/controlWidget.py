@@ -106,7 +106,7 @@ class UpgradeThread(QThread):
                 break
 
             # 等待应答信号，如果超时则终止
-            if self.semaphore.acquire(timeout=10) == False:
+            if not self.semaphore.acquire(timeout=10):
                 self.success = False
                 break
 
@@ -221,7 +221,8 @@ class UpgradeModule(QWidget):
         signal_manager.sigModuleReply.emit(True)
 
     # 更新地址
-    def on_file_update(self, path):
-        print(self.cob_id, path)
+    def on_file_update(self, path, new_version):
         self.fw = path
-        self.new_version.setText(os.path.basename(path))
+        self.new_version.setText(new_version)
+
+        print(f"更新的模块名称：{self.name}，版本号为：{self.new_version.text()}，路径为：{self.fw}")

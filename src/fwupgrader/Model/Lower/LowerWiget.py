@@ -15,6 +15,7 @@ from src.fwupgrader.Model.Lower.controlWidget import UpgradeModule
 import os
 import canopen
 import struct
+import re
 
 
 # 固件升级的主页面
@@ -114,9 +115,21 @@ class LowerWidget(QWidget):
                 # 更新每个固件的地址
                 self.ModuleList[cid].on_file_update(os.path.join(path, binFile))
 
+    # 从文件名 amplification_cool.V01.03.01.1001.bin 中解析出版本号 V01.03.01.1001
+    def get_version_from_file(self, file_name):
+        version_string = ""
+        match = re.search(r'V\d+\.\d+\.\d+\.\d+', file_name)
+        if match:
+            version_string = match.group(0)
+
+        return version_string
+
     def onSigUpdateLowerAdress(self, bin_file_dict):
         for file_name, file_path in bin_file_dict.items():
-            item = [data for data in lower_module_datas if data[2] == file_name]
+
+            prefix = file_name.split(".")[0]
+            new_version = self.get_version_from_file(file_name)
+            item = [data for data in lower_module_datas if data[2] == prefix]
 
             if len(item) == 0:
                 continue
@@ -124,7 +137,7 @@ class LowerWidget(QWidget):
             cid, _, _ = item[0]
 
             # 更新每个固件的地址
-            self.ModuleList[cid].on_file_update(file_path)
+            self.ModuleList[cid].on_file_update(file_path, new_version)
 
     def on_write(self, index, subindex, od, data):
         # 解包收到的二进制数据，将其解析为两个 16 位无符号整数，分别为 value 和 cob_id
