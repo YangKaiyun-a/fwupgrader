@@ -48,7 +48,6 @@ datas = [
 class LowerWidget(QWidget):
     def __init__(self):
         super().__init__()
-        self.btnBack = None
         self.btnImport = None
         self.centerNode = None
         self.ModuleList = None
@@ -92,12 +91,7 @@ class LowerWidget(QWidget):
         self.btnImport.setFixedSize(150, 50)
         self.btnImport.clicked.connect(self.onBtnImportClicked)
 
-        self.btnBack = QPushButton("返回主页面")
-        self.btnBack.setFixedSize(150, 50)
-        self.btnBack.clicked.connect(self.onBtnBackClicked)
-
         topLayout.addWidget(self.btnImport)
-        topLayout.addWidget(self.btnBack)
 
         for idx, data in enumerate(datas):
             # 创建每个固件，并根据cob_id存储在ModuleList容器中
@@ -141,9 +135,6 @@ class LowerWidget(QWidget):
 
                 # 更新每个固件的地址
                 self.ModuleList[cid].on_file_update(os.path.join(path, binFile))
-
-    def onBtnBackClicked(self):
-        signal_manager.sigSwitchPage.emit(0)
 
     def on_write(self, index, subindex, od, data):
         # 解包收到的二进制数据，将其解析为两个 16 位无符号整数，分别为 value 和 cob_id
