@@ -1,18 +1,14 @@
-from PySide6 import QtWidgets
 from PySide6.QtWidgets import (
     QWidget,
-    QLabel,
-    QPushButton,
     QVBoxLayout,
-    QDialog,
     QStackedWidget,
 )
-from PySide6.QtCore import Qt, Slot, Signal
-
+from src.fwupgrader.Data.SignalManager import signal_manager
 from src.fwupgrader.Model.MainWidget import MainWidget
 from src.fwupgrader.Model.Upper.UpperWiget import UpperWiget
 from src.fwupgrader.Model.Middel.MiddelWiget import MiddelWiget
 from src.fwupgrader.Model.Lower.LowerWiget import LowerWidget
+
 
 class CentralWidget(QWidget):
     def __init__(self):
@@ -32,20 +28,19 @@ class CentralWidget(QWidget):
         middel_widget = MiddelWiget()
         lower_widget = LowerWidget()
 
-        self.mainStackLayout.addWidget(main_widget)   # 索引 0
+        self.mainStackLayout.addWidget(main_widget)  # 索引 0
         self.mainStackLayout.addWidget(upper_widget)  # 索引 1
-        self.mainStackLayout.addWidget(middel_widget) # 索引 2
+        self.mainStackLayout.addWidget(middel_widget)  # 索引 2
         self.mainStackLayout.addWidget(lower_widget)  # 索引 3
 
-        self.mainStackLayout.setCurrentIndex(0)  # 默认显示第一个页面 (MainWidget)
+        self.mainStackLayout.setCurrentIndex(0)
 
-        # 连接 MainWidget 的信号到槽函数
-        main_widget.sigButtonClicked.connect(self.onSigButtonClicked)
+        signal_manager.sigSwitchPage.connect(self.onSigSwitchPage)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.mainStackLayout)
         self.setLayout(layout)
 
-    def onSigButtonClicked(self, index):
+    def onSigSwitchPage(self, index):
         if 0 <= index < self.mainStackLayout.count():
             self.mainStackLayout.setCurrentIndex(index)

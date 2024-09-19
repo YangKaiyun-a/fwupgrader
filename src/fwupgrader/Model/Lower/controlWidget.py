@@ -9,12 +9,12 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from PySide6.QtCore import Qt, QTimer, QThread, Slot, Signal
+from PySide6.QtCore import Qt, QThread, Slot, Signal
 import canopen
 import os
 import hashlib
-import time
 import threading
+from src.fwupgrader.Data.SignalManager import signal_manager
 
 
 # 更新进度条显示框
@@ -35,20 +35,15 @@ class ProgressDialog(QDialog):
         # 屏蔽esc键
 
     @Slot(int)
-    def update_progress(self, value):
+    def onSigProcessPresent(self, value):
         self.progress_bar.setValue(value)
 
     @Slot()
-    def finish(self):
+    def onSigProcessFinish(self):
         self.close()
 
 
 class UpgradeThread(QThread):
-    # 用于发送进度百分比信号
-    present = Signal(int)
-    # 用于通知升级完成
-    finish = Signal()
-
     def __init__(self, remote, fw, parent=None):
         super().__init__(parent)
         self.remote = remote
@@ -57,7 +52,7 @@ class UpgradeThread(QThread):
         self.success = False
 
     @Slot(bool)
-    def on_reply(self, r):
+    def onSigModuleReply(self, r):
         print('----------', r)
         self.success = r
         self.semaphore.release()
@@ -86,7 +81,7 @@ class UpgradeThread(QThread):
 
         # 如果参数发送失败，终止升级
         if not self.success:
-            self.finish.emit()
+            signal_manager.sigProcessFinish.emit()
             return
 
         print("开始发送数据")
@@ -115,26 +110,25 @@ class UpgradeThread(QThread):
                 self.success = False
                 break
 
-            self.present.emit(int((idx / total) * 100))
+            signal_manager.sigProcessPresent.emit(int((idx / total) * 100))
 
-        self.finish.emit()
+        signal_manager.sigProcessFinish.emit()
 
 
-class UpgradeWidget(QWidget):
+class UpgradeModule(QWidget):
     sig = Signal(bool)
-    reply = Signal(bool)
 
     def __init__(self, cob_id, name, tag, network, parent=None):
         super().__init__(parent)
         self.old_version = None
         self.new_version = None
-        self.getVersionButton = None    # 固件更新按钮
-        self.updateButton = None        # 获取版本按钮
-        self.cob_id = cob_id            # 设备ID
-        self.name = name                # 设备名称
-        self.tag = tag                  # 设备标识
-        self.fw = None                  # 固件文件路径
-        self.in_process = False         # 是否在升级中
+        self.getVersionButton = None  # 固件更新按钮
+        self.updateButton = None  # 获取版本按钮
+        self.cob_id = cob_id  # 设备ID
+        self.name = name  # 设备名称
+        self.tag = tag  # 设备标识
+        self.fw = None  # 固件文件路径
+        self.in_process = False  # 是否在升级中
 
         # 添加远程节点到CANopen网络
         current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -181,16 +175,16 @@ class UpgradeWidget(QWidget):
 
         # 开启线程
         p = UpgradeThread(self.remote, self.fw, self)
-        p.present.connect(process.update_progress)
-        p.finish.connect(process.finish)
-        self.reply.connect(p.on_reply)
+        signal_manager.sigProcessPresent.connect(process.onSigProcessPresent)
+        signal_manager.sigProcessFinish.connect(process.onSigProcessFinish)
+        signal_manager.sigModuleReply.connect(p.onSigModuleReply)
         p.start()
         self.in_process = True
         process.exec()
 
         self.in_process = False
 
-        self.reply.disconnect(p.on_reply)
+        signal_manager.sigModuleReply.disconnect(p.onSigModuleReply)
         print("结束了")
         text = "升级成功" if p.success else "升级失败"
 
@@ -222,8 +216,9 @@ class UpgradeWidget(QWidget):
     def upgradeButtonClicked(self):
         self.update_version()
 
-    def on_reply(self, index, subindex, value):
-        self.reply.emit(True)
+    # 固件回复
+    def receive_module_reply(self, index, subindex, value):
+        signal_manager.sigModuleReply.emit(True)
 
     def on_file_update(self, path):
         self.fw = path

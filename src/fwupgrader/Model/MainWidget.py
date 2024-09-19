@@ -1,15 +1,14 @@
 from PySide6 import QtWidgets
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget,
     QPushButton,
-    QVBoxLayout,
 )
-from PySide6.QtCore import Qt, Slot, Signal
+from src.fwupgrader.Data.SignalManager import signal_manager
+
 
 class MainWidget(QWidget):
-    # 定义信号，传递按钮标识符
     sigButtonClicked = Signal(int)
-
 
     def __init__(self):
         super().__init__()
@@ -25,6 +24,7 @@ class MainWidget(QWidget):
 
         self.btnMiddel = QPushButton("中位机升级")
         self.btnMiddel.setFixedSize(200, 50)
+
         self.btnLower = QPushButton("固件升级")
         self.btnLower.setFixedSize(200, 50)
 
@@ -42,12 +42,11 @@ class MainWidget(QWidget):
         mainLayout.addWidget(self.btnLower)
         self.setLayout(mainLayout)
 
-
     def onBtnUpperClicked(self):
-        self.sigButtonClicked.emit(1)
+        signal_manager.sigSwitchPage.emit(1)
 
     def onBtnMiddelClicked(self):
-        self.sigButtonClicked.emit(2)
+        signal_manager.sigSwitchPage.emit(2)
 
     def onBtnLowerClicked(self):
-        self.sigButtonClicked.emit(3)
+        signal_manager.sigSwitchPage.emit(3)
