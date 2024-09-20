@@ -54,13 +54,21 @@ class GeneralWidget(QWidget):
 
         # 主布局
         main_layout = QVBoxLayout(self)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
 
         current_version_hlayout = create_version_layout("当前版本：", self.edit_current_version)
         new_version_hlayout = create_version_layout("最新版本：", self.edit_new_version)
+        push_button_hlayout = QHBoxLayout()
+
+        btn_update = QPushButton("升级")
+        btn_update.setFixedSize(135, 45)
+        btn_update.clicked.connect(self.onBtnUpdateClicked)
+        push_button_hlayout.addWidget(btn_update)
 
         main_layout.addStretch()
         main_layout.addLayout(current_version_hlayout)
         main_layout.addLayout(new_version_hlayout)
+        main_layout.addLayout(push_button_hlayout)
         main_layout.addStretch()
 
     def init_connect(self):
@@ -98,5 +106,6 @@ class GeneralWidget(QWidget):
         self.edit_new_version.setText("Vxx.xx.xx.xxxx")
 
 
-
+    def onBtnUpdateClicked(self):
+        pass
 
