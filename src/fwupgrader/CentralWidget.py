@@ -10,10 +10,11 @@ from PySide6.QtWidgets import (
     QApplication,
     QFileDialog
 )
+
+from src.fwupgrader.Data.DataSet import ComputerType
 from src.fwupgrader.Data.SignalManager import signal_manager
 from src.fwupgrader.Model.MainWidget import MainWidget
-from src.fwupgrader.Model.Upper.UpperWiget import UpperWiget
-from src.fwupgrader.Model.Middle.MiddleWiget import MiddleWiget
+from src.fwupgrader.Model.GeneralWidget.GeneralWidget import GeneralWidget
 from src.fwupgrader.Model.Lower.LowerWiget import LowerWidget
 
 from pathlib import Path
@@ -68,8 +69,8 @@ class CentralWidget(QWidget):
         main_vlayout.addWidget(content_widget, stretch=10)
 
         main_widget = MainWidget()
-        upper_widget = UpperWiget()
-        middel_widget = MiddleWiget()
+        upper_widget = GeneralWidget(ComputerType.Upper)
+        middel_widget = GeneralWidget(ComputerType.Middle)
         lower_widget = LowerWidget()
 
         self.content_stack.addWidget(main_widget)  # 索引 0

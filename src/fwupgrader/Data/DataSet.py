@@ -45,7 +45,7 @@ def get_version(computer_type) -> str:
 
     if computer_type == ComputerType.Upper:
         version_file_path = os.path.expanduser('~/GPplus/bin/config/version')
-        current_computer_type = "Upper"
+        current_computer_type = "GeneralWidget"
     elif computer_type == ComputerType.Middle:
         version_file_path = os.path.expanduser('~/GPplus/bin/config/version')
         current_computer_type = "Middle"
