@@ -1,17 +1,17 @@
+from PySide6 import QtWidgets
 from PySide6.QtWidgets import (
     QWidget,
     QLabel,
     QPushButton,
     QVBoxLayout,
     QHBoxLayout,
+    QMessageBox,
     QLineEdit
 )
 from PySide6.QtCore import Qt
-
 from src.fwupgrader.Data.DataSet import get_version, ComputerType
 
-
-class UpperWiget(QWidget):
+class MiddleWiget(QWidget):
     def __init__(self):
         super().__init__()
         self.edit_current_version = None
@@ -38,12 +38,7 @@ class UpperWiget(QWidget):
         version_hlayout.addStretch()
         main_layout.addLayout(version_hlayout)
 
-    #每次进入该页面时会调用这个刷新函数
     def refresh_ui(self):
-        version = get_version(ComputerType.Upper)
+        version = get_version(ComputerType.Middle)
         self.edit_current_version.setText(version)
         print(f"获取到上位机版本为：{version}")
-
-
-
-

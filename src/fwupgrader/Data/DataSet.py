@@ -1,3 +1,8 @@
+import json
+import os
+from enum import Enum
+import re
+
 # cob_id, 名称， 前缀
 lower_module_datas = [
     (0x09, "扩增冷存", "amplification_cool"),
@@ -24,3 +29,50 @@ lower_module_datas = [
     (0x22, "转运", "transporter"),
     (0x0E, "Q龙门架夹爪", "xz_claw"),
 ]
+
+# 区分中上位机的枚举类型
+class ComputerType(Enum):
+    Upper = 1
+    Middle = 2
+    Lower = 3
+
+
+# 获取上、中位机版本号
+def get_version(computer_type) -> str:
+    version_file_path = ""
+    current_computer_type = ""
+    version = ""
+
+    if computer_type == ComputerType.Upper:
+        version_file_path = os.path.expanduser('~/GPplus/bin/config/version')
+        current_computer_type = "Upper"
+    elif computer_type == ComputerType.Middle:
+        version_file_path = os.path.expanduser('~/GPplus/bin/config/version')
+        current_computer_type = "Middle"
+
+    if not os.path.isfile(version_file_path):
+        raise FileNotFoundError(f"{current_computer_type}版本文件未找到，{version_file_path}")
+
+    try:
+        with open(version_file_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+            version = data.get('version')
+
+            if version is None:
+                raise ValueError(f"{current_computer_type}版本号不存在")
+            return version
+    except json.JSONDecodeError:
+        print(f"{current_computer_type}版本号解析失败，请检查文件内容")
+        return version
+    except Exception as e:
+        print(f"{current_computer_type}获取失败：{e}")
+        return version
+
+# 从文件名 amplification_cool.V01.03.01.1001.bin 中解析出版本号 V01.03.01.1001
+def get_version_from_file(file_name) -> str:
+    version_string = ""
+    match = re.search(r'V\d+\.\d+\.\d+\.\d+', file_name)
+    if match:
+        version_string = match.group(0)
+
+    return version_string

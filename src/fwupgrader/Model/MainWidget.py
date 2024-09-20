@@ -50,3 +50,6 @@ class MainWidget(QWidget):
 
     def onBtnLowerClicked(self):
         signal_manager.sigSwitchPage.emit(3)
+
+    def refresh_ui(self):
+        pass

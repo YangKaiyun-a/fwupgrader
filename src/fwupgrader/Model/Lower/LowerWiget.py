@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QPushButton
 )
 
-from src.fwupgrader.Data.DataSet import lower_module_datas
+from src.fwupgrader.Data.DataSet import lower_module_datas, get_version_from_file
 from src.fwupgrader.Data.SignalManager import signal_manager
 from src.fwupgrader.Model.Lower.controlWidget import UpgradeModule
 
@@ -18,7 +18,7 @@ import struct
 import re
 
 
-# 固件升级的主页面
+
 class LowerWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -60,14 +60,6 @@ class LowerWidget(QWidget):
         contenLayout = QGridLayout(contentWidget)
         scrollArea.setWidget(contentWidget)
 
-        topWidget = QWidget()
-        topLayout = QHBoxLayout(topWidget)
-        self.btnImport = QPushButton("导入更新文件")
-        self.btnImport.setFixedSize(150, 50)
-        self.btnImport.clicked.connect(self.onBtnImportClicked)
-
-        topLayout.addWidget(self.btnImport)
-
         for idx, data in enumerate(lower_module_datas):
             # 创建每个固件，并根据cob_id存储在ModuleList容器中
             update = UpgradeModule(data[0], data[1], data[2], self.network, self)
@@ -81,7 +73,6 @@ class LowerWidget(QWidget):
             )
 
         mainLayout = QVBoxLayout(self)
-        mainLayout.addWidget(topWidget)
         mainLayout.addWidget(scrollArea)
 
         self.setLayout(mainLayout)
@@ -89,46 +80,12 @@ class LowerWidget(QWidget):
     def init_connect(self):
         signal_manager.sigUpdateLowerAdress.connect(self.onSigUpdateLowerAdress)
 
-    def onBtnImportClicked(self):
-        fd = QtWidgets.QFileDialog()
-        fd.setFileMode(QtWidgets.QFileDialog.Directory)
-        fd.setOption(QtWidgets.QFileDialog.ShowDirsOnly)
-        if fd.exec():
-            f = fd.selectedFiles()
-            path = f[0]
-            # 获取指定目录 path 下的所有文件和子目录的名称列表
-            files = os.listdir(path)
-            # 过滤出所有以 .bin 结尾的文件
-            bins = [file for file in files if file.endswith(".bin")]
-            print(bins)
-
-            for binFile in bins:
-                # 在 datas 列表中查找与前缀匹配的设备
-                prefix = binFile.split(".")[0]
-                item = [data for data in lower_module_datas if data[2] == prefix]
-
-                if len(item) == 0:
-                    continue
-
-                cid, _, _ = item[0]
-
-                # 更新每个固件的地址
-                self.ModuleList[cid].on_file_update(os.path.join(path, binFile))
-
-    # 从文件名 amplification_cool.V01.03.01.1001.bin 中解析出版本号 V01.03.01.1001
-    def get_version_from_file(self, file_name):
-        version_string = ""
-        match = re.search(r'V\d+\.\d+\.\d+\.\d+', file_name)
-        if match:
-            version_string = match.group(0)
-
-        return version_string
 
     def onSigUpdateLowerAdress(self, bin_file_dict):
         for file_name, file_path in bin_file_dict.items():
 
             prefix = file_name.split(".")[0]
-            new_version = self.get_version_from_file(file_name)
+            new_version = get_version_from_file(file_name)
             item = [data for data in lower_module_datas if data[2] == prefix]
 
             if len(item) == 0:
@@ -149,3 +106,6 @@ class LowerWidget(QWidget):
             if w.in_process:
                 w.receive_module_reply(index, subindex, value)
                 break
+
+    def refresh_ui(self):
+        pass

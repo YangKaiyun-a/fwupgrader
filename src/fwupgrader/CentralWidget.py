@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 from src.fwupgrader.Data.SignalManager import signal_manager
 from src.fwupgrader.Model.MainWidget import MainWidget
 from src.fwupgrader.Model.Upper.UpperWiget import UpperWiget
-from src.fwupgrader.Model.Middel.MiddelWiget import MiddelWiget
+from src.fwupgrader.Model.Middle.MiddleWiget import MiddleWiget
 from src.fwupgrader.Model.Lower.LowerWiget import LowerWidget
 
 from pathlib import Path
@@ -69,7 +69,7 @@ class CentralWidget(QWidget):
 
         main_widget = MainWidget()
         upper_widget = UpperWiget()
-        middel_widget = MiddelWiget()
+        middel_widget = MiddleWiget()
         lower_widget = LowerWidget()
 
         self.content_stack.addWidget(main_widget)  # 索引 0
@@ -124,4 +124,5 @@ class CentralWidget(QWidget):
     # 切换页面
     def onSigSwitchPage(self, index):
         if 0 <= index < self.content_stack.count():
+            self.content_stack.widget(index).refresh_ui()
             self.content_stack.setCurrentIndex(index)
