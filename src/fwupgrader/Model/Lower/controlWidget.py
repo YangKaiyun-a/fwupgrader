@@ -150,12 +150,12 @@ class UpgradeModule(QWidget):
         tag.setStyleSheet("color: green")
         tag.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.old_version = QLabel("旧版本")
-        self.new_version = QLabel("新版本")
+        self.old_version = QLabel("Vxx.xx.xx.xxxx")
+        self.new_version = QLabel("Vxx.xx.xx.xxxx")
 
         gridLayout.addWidget(tag, 0, 0, 1, 2)
-        gridLayout.addWidget(QLabel("初始:", self), 1, 0)
-        gridLayout.addWidget(QLabel("固件:", self), 2, 0)
+        gridLayout.addWidget(QLabel("当前版本", self), 1, 0)
+        gridLayout.addWidget(QLabel("最新版本", self), 2, 0)
 
         gridLayout.addWidget(self.old_version, 1, 1)
         gridLayout.addWidget(self.new_version, 2, 1)
@@ -222,7 +222,13 @@ class UpgradeModule(QWidget):
 
     # 更新地址
     def on_file_update(self, path, new_version):
+        self.clear_file_info()
         self.fw = path
         self.new_version.setText(new_version)
 
         print(f"更新的模块名称：{self.name}，版本号为：{self.new_version.text()}，路径为：{self.fw}")
+
+
+    def clear_file_info(self):
+        self.fw = None
+        self.new_version.setText("Vxx.xx.xx.xxxx")

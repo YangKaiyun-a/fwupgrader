@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QVBoxLayout,
     QHBoxLayout,
-    QPushButton
+    QPushButton, QMessageBox
 )
 
 from src.fwupgrader.Data.DataSet import lower_module_datas, get_version_from_file
@@ -78,12 +78,15 @@ class LowerWidget(QWidget):
         self.setLayout(mainLayout)
 
     def init_connect(self):
-        signal_manager.sigUpdateLowerAdress.connect(self.onSigUpdateLowerAdress)
+        signal_manager.sigUpdateLowerAddress.connect(self.onSigUpdateLowerAddress)
 
 
-    def onSigUpdateLowerAdress(self, bin_file_dict):
+    def onSigUpdateLowerAddress(self, bin_file_dict):
+        if not bin_file_dict:
+            QMessageBox.warning(self, "警告", "固件文件解析为空，请检查路径！", QMessageBox.StandardButton.Ok)
+            return
+
         for file_name, file_path in bin_file_dict.items():
-
             prefix = file_name.split(".")[0]
             new_version = get_version_from_file(file_name)
             item = [data for data in lower_module_datas if data[2] == prefix]

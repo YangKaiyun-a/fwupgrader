@@ -8,16 +8,16 @@ from PySide6.QtWidgets import (
     QPushButton,
     QHBoxLayout,
     QApplication,
-    QFileDialog
+    QFileDialog, QMessageBox
 )
 
-from src.fwupgrader.Data.DataSet import ComputerType
+from src.fwupgrader.Data.DataSet import ComputerType, parse_update_file
 from src.fwupgrader.Data.SignalManager import signal_manager
 from src.fwupgrader.Model.MainWidget import MainWidget
 from src.fwupgrader.Model.GeneralWidget.GeneralWidget import GeneralWidget
 from src.fwupgrader.Model.Lower.LowerWiget import LowerWidget
 
-from pathlib import Path
+
 
 
 class CentralWidget(QWidget):
@@ -91,22 +91,11 @@ class CentralWidget(QWidget):
             QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks
         )
 
-        if directory:
-            bin_file_dict = {}
-            bin_file_list = [file for file in Path(directory).rglob('*.bin')]
+        if not directory:
+            QMessageBox.warning(self, "警告", "请选择路径！", QMessageBox.StandardButton.Ok)
+            return
 
-            for bin_file in bin_file_list:
-                # 文件命（不带后缀.bin）
-                file_name_without_extension = bin_file.stem
-                # 绝对路径
-                file_absolute_path = str(bin_file.resolve())
-                # 组合为字典
-                bin_file_dict[file_name_without_extension] = file_absolute_path
-
-            signal_manager.sigUpdateLowerAdress.emit(bin_file_dict)
-
-        else:
-            print("未选择目录")
+        parse_update_file(directory)
 
     # 返回按钮槽函数
     def onBtnBackClicked(self):

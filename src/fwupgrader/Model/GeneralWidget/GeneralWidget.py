@@ -8,7 +8,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from src.fwupgrader.Data.DataSet import get_version, ComputerType
+from src.fwupgrader.Data.DataSet import get_version, ComputerType, get_version_from_file
+from src.fwupgrader.Data.SignalManager import signal_manager
 
 
 def create_version_layout(label_text, line_edit):
@@ -30,11 +31,16 @@ def create_version_layout(label_text, line_edit):
 class GeneralWidget(QWidget):
     def __init__(self, computer_type):
         super().__init__()
-        self.computer_type = computer_type
-        self.computer_type_name = None
-        self.edit_new_version = None
-        self.edit_current_version = None
+        self.computer_type = computer_type      # 区分上位机、中位机
+        self.computer_type_name = None          # 字符串，"上位机"或"中位机"
+        self.edit_new_version = None            # 最新版本QLinEdit
+        self.edit_current_version = None        # 当前版本QLineEdit
+        self.fw = None                          # 升级文件路径
+        self.init()
+
+    def init(self):
         self.init_ui()
+        self.init_connect()
 
     # 初始化ui
     def init_ui(self):
@@ -57,11 +63,39 @@ class GeneralWidget(QWidget):
         main_layout.addLayout(new_version_hlayout)
         main_layout.addStretch()
 
+    def init_connect(self):
+        signal_manager.sigUpdateUpperAddress.connect(self.onSigUpdateUpperAddress)
+        signal_manager.sigUpdateMiddleAddress.connect(self.onSigUpdateMiddleAddress)
+
+    def onSigUpdateUpperAddress(self, file_absolute_path):
+        if self.computer_type == ComputerType.Middle:
+            return
+
+        self.clear_file_info()
+        self.fw = file_absolute_path
+        new_version = get_version_from_file(file_absolute_path)
+        self.edit_new_version.setText(new_version)
+        print(f"获取到{self.computer_type_name}最新版本为：{new_version}")
+
+    def onSigUpdateMiddleAddress(self, file_absolute_path):
+        if self.computer_type == ComputerType.Upper:
+            return
+
+        self.clear_file_info()
+        self.fw = file_absolute_path
+        new_version = get_version_from_file(file_absolute_path)
+        self.edit_new_version.setText(new_version)
+        print(f"获取到{self.computer_type_name}最新版本为：{new_version}")
+
     #每次进入该页面时会调用这个刷新函数
     def refresh_ui(self):
         version = get_version(ComputerType.Upper)
         self.edit_current_version.setText(version)
-        print(f"获取到{self.computer_type_name}版本为：{version}")
+        print(f"获取到{self.computer_type_name}当前版本为：{version}")
+
+    def clear_file_info(self):
+        self.fw = None
+        self.edit_new_version.setText("Vxx.xx.xx.xxxx")
 
 
 

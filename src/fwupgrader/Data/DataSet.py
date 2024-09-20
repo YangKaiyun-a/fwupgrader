@@ -2,6 +2,9 @@ import json
 import os
 from enum import Enum
 import re
+from pathlib import Path
+
+from src.fwupgrader.Data.SignalManager import signal_manager
 
 # cob_id, 名称， 前缀
 lower_module_datas = [
@@ -76,3 +79,44 @@ def get_version_from_file(file_name) -> str:
         version_string = match.group(0)
 
     return version_string
+
+def match_file(directory, condition) -> str:
+    file = next(Path(directory).rglob(condition))
+    file_absolute_path = str(file.resolve())
+
+    return file_absolute_path
+
+
+def match_lower_file(directory):
+    """解析固件升级文件"""
+    bin_file_dict = {}
+    bin_file_list = [file for file in Path(directory).rglob('*.bin')]
+
+    for bin_file in bin_file_list:
+        # 文件名（不带后缀.bin）
+        file_name_without_extension = bin_file.stem
+        # 绝对路径
+        file_absolute_path = str(bin_file.resolve())
+        # 组合为字典
+        bin_file_dict[file_name_without_extension] = file_absolute_path
+
+    signal_manager.sigUpdateLowerAddress.emit(bin_file_dict)
+
+def match_upper_file(directory):
+    """解析上位机升级文件"""
+    file_absolute_path = match_file(directory, 'GPplus-V*')
+    signal_manager.sigUpdateUpperAddress.emit(file_absolute_path)
+
+def match_middle_file(directory):
+    """解析中位机升级文件"""
+    file_absolute_path = match_file(directory, 'GPinstall-V*')
+    signal_manager.sigUpdateMiddleAddress.emit(file_absolute_path)
+
+
+def parse_update_file(directory):
+    """从路径中解析出升级文件"""
+    match_upper_file(directory)
+    match_middle_file(directory)
+    match_lower_file(directory)
+#
+
