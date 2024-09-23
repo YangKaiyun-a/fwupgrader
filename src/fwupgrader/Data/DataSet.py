@@ -1,8 +1,15 @@
 import json
 import os
+import shutil
 from enum import Enum
 import re
 from pathlib import Path
+from xxlimited_35 import error
+
+import pexpect
+from PySide6.QtWidgets import QMessageBox
+from mako.runtime import capture
+from paramiko.proxy import subprocess
 
 from src.fwupgrader.Data.SignalManager import signal_manager
 
@@ -33,6 +40,7 @@ lower_module_datas = [
     (0x0E, "Q龙门架夹爪", "xz_claw"),
 ]
 
+
 # 区分中上位机的枚举类型
 class ComputerType(Enum):
     Upper = 1
@@ -40,8 +48,8 @@ class ComputerType(Enum):
     Lower = 3
 
 
-# 获取上、中位机版本号
 def get_version(computer_type) -> str:
+    """获取上、中位机版本号"""
     version_file_path = ""
     current_computer_type = ""
     version = ""
@@ -71,14 +79,16 @@ def get_version(computer_type) -> str:
         print(f"{current_computer_type}获取失败：{e}")
         return version
 
-# 从文件名 amplification_cool.V01.03.01.1001.bin 中解析出版本号 V01.03.01.1001
+
 def get_version_from_file(file_name) -> str:
+    """从文件名中解析出版本号 V01.03.01.1001"""
     version_string = ""
     match = re.search(r'V\d+\.\d+\.\d+\.\d+', file_name)
     if match:
         version_string = match.group(0)
 
     return version_string
+
 
 def match_file(directory, condition) -> str:
     file = next(Path(directory).rglob(condition))
@@ -102,10 +112,12 @@ def match_lower_file(directory):
 
     signal_manager.sigUpdateLowerAddress.emit(bin_file_dict)
 
+
 def match_upper_file(directory):
     """解析上位机升级文件"""
     file_absolute_path = match_file(directory, 'GPplus-V*')
     signal_manager.sigUpdateUpperAddress.emit(file_absolute_path)
+
 
 def match_middle_file(directory):
     """解析中位机升级文件"""
@@ -118,5 +130,85 @@ def parse_update_file(directory):
     match_upper_file(directory)
     match_middle_file(directory)
     match_lower_file(directory)
-#
 
+
+def backup_current_version(backup_path, current_version):
+    """
+    执行文件备份
+    参数1: 备份文件的目录
+    参数2: 当前文件的目录
+    """
+    try:
+        if Path(backup_path).exists():
+            shutil.rmtree(backup_path)
+        shutil.copytree(current_version, backup_path)
+        return True
+    except Exception as e:
+        print(f"备份失败：{e}")
+        return False
+
+
+def rollback(current_version_path, backup_path):
+    """
+    回滚到上一个版本
+    参数1: 当前文件目录
+    参数2: 备份文件的目录
+    """
+    print(f"执行回滚操作，将{backup_path}还原到{current_version_path}")
+
+    try:
+        if Path(current_version_path).exists():
+            shutil.rmtree(current_version_path)  # 删除当前版本
+        shutil.copytree(backup_path, current_version_path)  #恢复备份
+        print("回滚成功，恢复到上一版本")
+    except Exception as e:
+        print(f"回滚失败：{str(e)}")
+
+
+def execute_upper_script(directory):
+    """执行上位机升级脚本"""
+    print(f"即将进行上位机升级，升级文件位于：{directory}")
+
+    backup_path = os.path.expanduser("~/GPplus_backup")
+    current_file = os.path.expanduser("~/GPplus")
+
+    # 备份文件
+    if not backup_current_version(backup_path, current_file):
+        #备份文件失败后终止升级
+        print("备份原始文件失败，终止升级！")
+        signal_manager.sigExecuteScriptResult.emit("备份原始文件失败，终止升级！")
+        return
+
+    print("备份原始文件成功！")
+
+    try:
+        # 使用pexpect来模拟用户输入
+        child = pexpect.spawn(f'bash {directory}', encoding='utf-8')
+        child.expect(r'.*密码.*|.*password.*')
+        child.sendline('1')
+        child.expect(pexpect.EOF)
+        signal_manager.sigExecuteScriptResult.emit("升级成功！")
+    except Exception as e:
+        print(f"上位机升级失败：{str(e)}")
+        print("即将回滚到上一个版本")
+        signal_manager.sigExecuteScriptResult.emit("升级失败！回滚至上一个版本")
+        rollback(current_file, backup_path)
+
+
+
+def execute_middle_script(directory):
+    """执行中位机升级脚本"""
+    print(f"执行中位机升级脚本：{directory}")
+
+
+def execute_upgrade_script(directory, computer_type):
+    """执行升级脚本"""
+    if computer_type == ComputerType.Upper:
+        execute_upper_script(directory)
+    elif computer_type == ComputerType.Middle:
+        execute_middle_script(directory)
+
+
+if __name__ == "__main__":
+    path = os.path.expanduser("~/V01.03.01.1001/GPplus-V01.03.01.1001-d031decd4bcc8b584d9c92eefedd3a44c8d88c41.sh")
+    execute_upper_script(path)

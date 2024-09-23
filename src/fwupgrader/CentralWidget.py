@@ -1,6 +1,7 @@
 import os
 
 from PySide6 import QtWidgets
+from PySide6.QtCore import Slot
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -82,8 +83,9 @@ class CentralWidget(QWidget):
         # 切换页面信号槽
         signal_manager.sigSwitchPage.connect(self.onSigSwitchPage)
 
-    # 导入按钮槽函数
+    @Slot()
     def onBtnImportClicked(self):
+        """导入按钮槽函数"""
         directory = QFileDialog.getExistingDirectory(
             self,
             "选择升级文件包",
@@ -97,8 +99,9 @@ class CentralWidget(QWidget):
 
         parse_update_file(directory)
 
-    # 返回按钮槽函数
+    @Slot()
     def onBtnBackClicked(self):
+        """返回按钮槽函数"""
         current_index = self.content_stack.currentIndex()
         if current_index == 0:
             QApplication.quit()
@@ -111,8 +114,9 @@ class CentralWidget(QWidget):
         else:
             self.btnBack.setText("返回")
 
-    # 切换页面
+    @Slot()
     def onSigSwitchPage(self, index):
+        """切换页面"""
         if 0 <= index < self.content_stack.count():
             self.content_stack.widget(index).refresh_ui()
             self.content_stack.setCurrentIndex(index)

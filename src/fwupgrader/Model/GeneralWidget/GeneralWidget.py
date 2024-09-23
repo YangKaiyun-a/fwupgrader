@@ -4,11 +4,12 @@ from PySide6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QHBoxLayout,
-    QLineEdit
+    QLineEdit, QMessageBox, QDialog
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Slot
+from blueman.plugins.applet.NetUsage import Dialog
 
-from src.fwupgrader.Data.DataSet import get_version, ComputerType, get_version_from_file
+from src.fwupgrader.Data.DataSet import get_version, ComputerType, get_version_from_file, execute_upgrade_script
 from src.fwupgrader.Data.SignalManager import signal_manager
 
 
@@ -36,14 +37,16 @@ class GeneralWidget(QWidget):
         self.edit_new_version = None            # 最新版本QLinEdit
         self.edit_current_version = None        # 当前版本QLineEdit
         self.fw = None                          # 升级文件路径
+        self.is_update = False                  # 是否在升级过程中
+        self.result_dlg = None                  # 结果弹窗
         self.init()
 
     def init(self):
         self.init_ui()
         self.init_connect()
 
-    # 初始化ui
     def init_ui(self):
+        """初始化ui"""
         if self.computer_type == ComputerType.Upper:
             self.computer_type_name = '上位机'
         elif self.computer_type == ComputerType.Middle:
@@ -74,8 +77,11 @@ class GeneralWidget(QWidget):
     def init_connect(self):
         signal_manager.sigUpdateUpperAddress.connect(self.onSigUpdateUpperAddress)
         signal_manager.sigUpdateMiddleAddress.connect(self.onSigUpdateMiddleAddress)
+        signal_manager.sigExecuteScriptResult.connect(self.onSigExecuteScriptResult)
 
+    @Slot()
     def onSigUpdateUpperAddress(self, file_absolute_path):
+        """接收上位机升级路径"""
         if self.computer_type == ComputerType.Middle:
             return
 
@@ -85,7 +91,9 @@ class GeneralWidget(QWidget):
         self.edit_new_version.setText(new_version)
         print(f"获取到{self.computer_type_name}最新版本为：{new_version}")
 
+    @Slot()
     def onSigUpdateMiddleAddress(self, file_absolute_path):
+        """接收中位机升级路径"""
         if self.computer_type == ComputerType.Upper:
             return
 
@@ -95,17 +103,34 @@ class GeneralWidget(QWidget):
         self.edit_new_version.setText(new_version)
         print(f"获取到{self.computer_type_name}最新版本为：{new_version}")
 
-    #每次进入该页面时会调用这个刷新函数
     def refresh_ui(self):
+        """每次进入该页面时会调用这个刷新函数"""
         version = get_version(ComputerType.Upper)
         self.edit_current_version.setText(version)
         print(f"获取到{self.computer_type_name}当前版本为：{version}")
 
     def clear_file_info(self):
+        """清空所有信息"""
         self.fw = None
         self.edit_new_version.setText("Vxx.xx.xx.xxxx")
+        self.is_update = False
 
-
+    @Slot()
     def onBtnUpdateClicked(self):
-        pass
+        """升级按钮槽函数"""
+        if not self.fw:
+            QMessageBox.warning(self, "警告", "请导入升级包", QMessageBox.StandardButton.Ok)
+            return
+
+        self.is_update = True
+        # 执行升级
+        execute_upgrade_script(self.fw, self.computer_type)
+
+    @Slot()
+    def onSigExecuteScriptResult(self, message):
+        """升级结果槽函数"""
+        if self.is_update:
+            return
+        self.is_update = False
+
 

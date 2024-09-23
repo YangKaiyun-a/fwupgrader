@@ -1,5 +1,5 @@
 from PySide6 import QtWidgets
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import (
     QWidget,
     QPushButton,
@@ -42,12 +42,15 @@ class MainWidget(QWidget):
         mainLayout.addWidget(self.btnLower)
         self.setLayout(mainLayout)
 
+    @Slot()
     def onBtnUpperClicked(self):
         signal_manager.sigSwitchPage.emit(1)
 
+    @Slot()
     def onBtnMiddelClicked(self):
         signal_manager.sigSwitchPage.emit(2)
 
+    @Slot()
     def onBtnLowerClicked(self):
         signal_manager.sigSwitchPage.emit(3)
 
