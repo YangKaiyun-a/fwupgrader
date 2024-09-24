@@ -187,6 +187,7 @@ def execute_upper_script(directory):
         child.expect(r'.*密码.*|.*password.*')
         child.sendline('1')
         child.expect(pexpect.EOF)
+        print("上位机升级成功")
         signal_manager.sigExecuteScriptResult.emit("升级成功！")
     except Exception as e:
         print(f"上位机升级失败：{str(e)}")
