@@ -4,12 +4,8 @@ import shutil
 from enum import Enum
 import re
 from pathlib import Path
-from xxlimited_35 import error
-
 import pexpect
-from PySide6.QtWidgets import QMessageBox
-from mako.runtime import capture
-from paramiko.proxy import subprocess
+
 
 from src.fwupgrader.Data.SignalManager import signal_manager
 
@@ -40,12 +36,17 @@ lower_module_datas = [
     (0x0E, "Q龙门架夹爪", "xz_claw"),
 ]
 
-
 # 区分中上位机的枚举类型
 class ComputerType(Enum):
-    Upper = 1
-    Middle = 2
+    Upper = 0
+    Middle = 1
+    QPCR = 2
     Lower = 3
+
+# 升级过程中的返回类型
+class ResultType(Enum):
+    Empty_File_path = 0,        #升级路径为空
+    Start_Update = 1,           #开始升级
 
 
 def get_version(computer_type) -> str:
@@ -56,7 +57,7 @@ def get_version(computer_type) -> str:
 
     if computer_type == ComputerType.Upper:
         version_file_path = os.path.expanduser('~/GPplus/bin/config/version')
-        current_computer_type = "GeneralWidget"
+        current_computer_type = "GeneralData"
     elif computer_type == ComputerType.Middle:
         version_file_path = os.path.expanduser('~/GPplus/bin/config/version')
         current_computer_type = "Middle"

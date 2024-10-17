@@ -15,7 +15,6 @@ from PySide6.QtWidgets import (
 from src.fwupgrader.Data.DataSet import ComputerType, parse_update_file
 from src.fwupgrader.Data.SignalManager import signal_manager
 from src.fwupgrader.Model.MainWidget import MainWidget
-from src.fwupgrader.Model.GeneralWidget.GeneralWidget import GeneralWidget
 from src.fwupgrader.Model.Lower.LowerWiget import LowerWidget
 
 
@@ -70,14 +69,10 @@ class CentralWidget(QWidget):
         main_vlayout.addWidget(content_widget, stretch=10)
 
         main_widget = MainWidget()
-        upper_widget = GeneralWidget(ComputerType.Upper)
-        middel_widget = GeneralWidget(ComputerType.Middle)
         lower_widget = LowerWidget()
 
-        self.content_stack.addWidget(main_widget)  # 索引 0
-        self.content_stack.addWidget(upper_widget)  # 索引 1
-        self.content_stack.addWidget(middel_widget)  # 索引 2
-        self.content_stack.addWidget(lower_widget)  # 索引 3
+        self.content_stack.addWidget(main_widget)   # 索引 0
+        self.content_stack.addWidget(lower_widget)  # 索引 1
         self.content_stack.setCurrentIndex(0)
 
         # 切换页面信号槽
