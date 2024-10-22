@@ -1,5 +1,7 @@
 from PySide6.QtCore import QObject, Signal
 
+from src.fwupgrader.Data.Global import ComputerType
+
 
 class SignalManager(QObject):
     # 切换页面
@@ -16,8 +18,8 @@ class SignalManager(QObject):
     sigUpdateUpperAddress = Signal(str)
     # 发送中位机文件路径
     sigUpdateMiddleAddress = Signal(str)
-    # 上中位机升级结果
-    sigExecuteScriptResult = Signal(str)
+    # 上中位机、QPCR升级结果
+    sigExecuteScriptResult = Signal(ComputerType, bool)
 
 
 

@@ -1,55 +1,14 @@
 import json
 import os
 import shutil
-from enum import Enum
 import re
 from pathlib import Path
 import pexpect
 
-
 from src.fwupgrader.Data.SignalManager import signal_manager
+from src.fwupgrader.Data.Global import ComputerType
 
-# cob_id, 名称， 前缀
-lower_module_datas = [
-    (0x09, "扩增冷存", "amplification_cool"),
-    (0x07, "扩增DJ1", "amplification_dj1"),
-    (0x2E, "扩增DJ1电容", "dj_capacitance_1"),
-    (0x05, "提取DJ2", "extract_dj1"),
-    (0x2F, "扩增DJ1电容", "dj_capacitance_2"),
-    (0x24, "DP1夹爪", "dp1_jaw"),
-    (0x23, "DP1龙门架", "dp1_xy"),
-    (0x04, "DP8移液器", "dp8"),
-    (0x2D, "DP8气压电容检测", "pressure_capacitance"),
-    (0x03, "DP8龙门架", "dp8_xy"),
-    (0x06, "热封模块", "heat_seal"),
-    (0x26, "加热振荡1", "heat_shake_1"),
-    (0x27, "加热振荡2", "heat_shake_2"),
-    (0x28, "加热振荡3", "heat_shake_3"),
-    (0x29, "加热振荡4", "heat_shake_4"),
-    (0x2A, "加热振荡5", "heat_shake_5"),
-    (0x2B, "磁珠振荡", "heat_shake_6"),
-    (0x0A, "开关信号", "switch_signal"),
-    (0x0B, "紫外状态灯", "light_status"),
-    (0x08, "核酸冷存", "cool_store"),
-    (0x0C, "风道气压", "environment_monitor"),
-    (0x22, "转运", "transporter"),
-    (0x0E, "Q龙门架夹爪", "xz_claw"),
-]
-
-# 区分中上位机的枚举类型
-class ComputerType(Enum):
-    Upper = 0
-    Middle = 1
-    QPCR = 2
-    Lower = 3
-
-# 升级过程中的返回类型
-class ResultType(Enum):
-    Empty_File_path = 0,        #升级路径为空
-    Start_Update = 1,           #开始升级
-
-
-def get_version(computer_type) -> str:
+def get_current_version_from_file(computer_type) -> str:
     """获取上、中位机版本号"""
     version_file_path = ""
     current_computer_type = ""
@@ -81,7 +40,7 @@ def get_version(computer_type) -> str:
         return version
 
 
-def get_version_from_file(file_name) -> str:
+def get_new_version_from_file(file_name) -> str:
     """从文件名中解析出版本号 V01.03.01.1001"""
     version_string = ""
     match = re.search(r'V\d+\.\d+\.\d+\.\d+', file_name)
@@ -176,8 +135,9 @@ def execute_upper_script(directory):
     # 备份文件
     if not backup_current_version(backup_path, current_file):
         #备份文件失败后终止升级
-        print("备份原始文件失败，终止升级！")
-        signal_manager.sigExecuteScriptResult.emit("备份原始文件失败，终止升级！")
+        result_message = "备份原始文件失败，终止升级！"
+        print(result_message)
+        signal_manager.sigExecuteScriptResult.emit(ComputerType.Upper, False)
         return
 
     print("备份原始文件成功！")
@@ -188,12 +148,13 @@ def execute_upper_script(directory):
         child.expect(r'.*密码.*|.*password.*')
         child.sendline('1')
         child.expect(pexpect.EOF)
-        print("上位机升级成功")
-        signal_manager.sigExecuteScriptResult.emit("升级成功！")
+        result_message = "上位机升级成功"
+        print(result_message)
+        signal_manager.sigExecuteScriptResult.emit(ComputerType.Upper, True)
     except Exception as e:
-        print(f"上位机升级失败：{str(e)}")
-        print("即将回滚到上一个版本")
-        signal_manager.sigExecuteScriptResult.emit("升级失败！回滚至上一个版本")
+        result_message = f"上位机升级失败：{str(e)}，即将回滚到上一个版本"
+        print(result_message)
+        signal_manager.sigExecuteScriptResult.emit(ComputerType.Upper, False)
         rollback(current_file, backup_path)
 
 
@@ -207,8 +168,8 @@ def execute_upgrade_script(directory, computer_type):
     """执行升级脚本"""
     if computer_type == ComputerType.Upper:
         execute_upper_script(directory)
-    elif computer_type == ComputerType.Middle:
-        execute_middle_script(directory)
+    # elif computer_type == ComputerType.Middle:
+    #     execute_middle_script(directory)
 
 
 if __name__ == "__main__":
