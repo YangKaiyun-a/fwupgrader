@@ -1,5 +1,9 @@
 from enum import Enum
 
+upper_address = "~/GPplus/bin/config/version"           # 上位机版本号目录
+middle_address = "~/GPinstall/bin/config/version"       # 上位机版本号目录
+qpcr_address = "~/QPCR/version.ini"                     # 上位机版本号目录
+
 # cob_id, 名称， 前缀
 lower_module_datas = [
     (0x09, "扩增冷存", "amplification_cool"),
@@ -35,8 +39,16 @@ class ComputerType(Enum):
     QPCR = 2
     Lower = 3
 
+# 根据部件索引快速访问名称
+computerType_name_map = {
+    ComputerType.Upper: "上位机",
+    ComputerType.Middle: "中位机",
+    ComputerType.QPCR: "QPCR"
+}
 
 # 升级过程中的返回类型
 class ResultType(Enum):
-    Empty_File_path = 0,    # 升级路径为空
-    Start_Update = 1,       # 开始升级
+    EMPTY_PATH = 0,         # 升级路径为空
+    START = 1,              # 开始升级
+    SUCCESSED = 2,          # 升级成功
+    FAILD = 3               # 升级失败

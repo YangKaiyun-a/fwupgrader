@@ -9,9 +9,9 @@ from PySide6.QtWidgets import (
 )
 
 from src.fwupgrader.Data.DataSet import get_new_version_from_file
-from src.fwupgrader.Data.Global import lower_module_datas
+from src.fwupgrader.Data.Global import lower_module_datas, ComputerType
 from src.fwupgrader.Data.SignalManager import signal_manager
-from src.fwupgrader.Model.Lower.controlWidget import UpgradeModule
+from src.fwupgrader.Module.Lower.controlWidget import UpgradeModule
 
 import os
 import canopen
@@ -89,7 +89,7 @@ class LowerWidget(QWidget):
 
         for file_name, file_path in bin_file_dict.items():
             prefix = file_name.split(".")[0]
-            new_version = get_new_version_from_file(file_name)
+            new_version = get_new_version_from_file(ComputerType.Lower, file_name)
             item = [data for data in lower_module_datas if data[2] == prefix]
 
             if len(item) == 0:

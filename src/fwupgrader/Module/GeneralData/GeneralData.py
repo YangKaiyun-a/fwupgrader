@@ -10,22 +10,6 @@ from src.fwupgrader.Data.DataSet import (
 from src.fwupgrader.Data.Global import ComputerType
 
 
-def create_version_layout(label_text, line_edit):
-    """创建通用布局"""
-    label = QLabel(label_text)
-    line_edit.setReadOnly(True)
-    line_edit.setFixedWidth(350)
-
-    hlayout = QHBoxLayout()
-    hlayout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    hlayout.addStretch()
-    hlayout.addWidget(label)
-    hlayout.addWidget(line_edit)
-    hlayout.addStretch()
-
-    return hlayout
-
-
 class GeneralData(QObject):
     def __init__(self, computer_type):
         super().__init__()
@@ -54,23 +38,21 @@ class GeneralData(QObject):
     def init_file_info(self):
         """初始化所有信息"""
         self.fw = None
-        self.new_version = "Vxx.xx.xx.xxxx"
+        self.new_version = ""
         self.is_update = False
         self.get_current_version_from_file()
 
     def get_current_version_from_file(self):
         """从文件中获取当前版本号"""
-        version = get_current_version_from_file(ComputerType.Upper)
-        self.current_version = version
-        print(f"获取到{self.computer_type_name}当前版本为：{version}")
+        self.current_version = get_current_version_from_file(self.computer_type)
+        print(f"获取到{self.computer_type_name}当前版本为：{self.current_version}")
 
     def update_file_info(self, file_absolute_path):
         """更新升级路径"""
         self.init_file_info()
         self.fw = file_absolute_path
-        new_version = get_new_version_from_file(file_absolute_path)
-        self.new_version = new_version
-        print(f"获取到{self.computer_type_name}最新版本为：{new_version}")
+        self.new_version = get_new_version_from_file(self.computer_type, file_absolute_path)
+        print(f"获取到{self.computer_type_name}最新版本为：{self.new_version}")
 
     def get_fw(self):
         """返回升级路径"""
@@ -93,4 +75,5 @@ class GeneralData(QObject):
 
     def get_current_version(self):
         """返回当前版本"""
+        # self.get_current_version_from_file()
         return self.current_version

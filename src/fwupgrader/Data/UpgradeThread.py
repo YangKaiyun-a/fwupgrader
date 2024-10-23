@@ -4,10 +4,9 @@ from src.fwupgrader.Data.DataSet import execute_upgrade_script
 
 
 class UpgradeThread(QThread):
-    def __init__(self, general_data, parent=None):
+    def __init__(self, update_components, parent=None):
         super().__init__(parent)
-        self.fw = general_data.get_fw()
-        self.computer_type = general_data.get_computer_type()
+        self.update_components = update_components      # 存储当前需要升级的所有部件
 
     def run(self):
-        execute_upgrade_script(self.fw, self.computer_type)
+        execute_upgrade_script(self.update_components)
