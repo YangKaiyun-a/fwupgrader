@@ -84,17 +84,17 @@ def match_file(directory, condition) -> str:
 def parse_upper_update_file(directory):
     """解析上位机升级文件"""
     file_absolute_path = match_file(directory, 'GPplus-V*')
-    signal_manager.sigUpdateUpperAddress.emit(file_absolute_path)
+    signal_manager.sigUpdateFileAddress.emit(ComputerType.Upper, file_absolute_path)
 
 def parse_middle_update_file(directory):
     """解析中位机升级文件"""
     file_absolute_path = match_file(directory, 'GPinstall-V*')
-    signal_manager.sigUpdateMiddleAddress.emit(file_absolute_path)
+    signal_manager.sigUpdateFileAddress.emit(ComputerType.Middle, file_absolute_path)
 
 def parse_qpcr_update_file(directory):
     """解析QPCR升级文件和版本号"""
     file_absolute_path = match_file(directory, 'qpcr_upgrade.sh')
-    signal_manager.sigUpdateQPCRAddress.emit(file_absolute_path)
+    signal_manager.sigUpdateFileAddress.emit(ComputerType.QPCR, file_absolute_path)
 
 def parse_lower_update_file(directory):
     """解析固件升级文件"""
@@ -186,8 +186,6 @@ def execute_upper_script(directory):
         signal_manager.sigExecuteScriptResult.emit(ComputerType.Upper, ResultType.FAILD)
         rollback(current_file, backup_path)
 
-
-
 def execute_middle_script(directory):
     """执行中位机升级脚本"""
     print(f"执行中位机升级脚本：{directory}")
@@ -195,7 +193,6 @@ def execute_middle_script(directory):
 def execute_qpcr_script(directory):
     """执行QPCR升级脚本"""
     print(f"执行QPCR升级脚本：{directory}")
-
 
 def execute_upgrade_script(update_components):
     """执行升级脚本"""

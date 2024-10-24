@@ -155,9 +155,7 @@ class MainWidget(QWidget):
         }
 
     def init_connect(self):
-        signal_manager.sigUpdateUpperAddress.connect(self.onSigUpdateUpperAddress)
-        signal_manager.sigUpdateMiddleAddress.connect(self.onSigUpdateMiddleAddress)
-        signal_manager.sigUpdateQPCRAddress.connect(self.onSigUpdateQPCRAddress)
+        signal_manager.sigUpdateFileAddress.connect(self.onSigUpdateFileAddress)
         signal_manager.sigExecuteScriptResult.connect(self.onSigExecuteScriptResult)
 
     def init_current_version(self):
@@ -208,29 +206,45 @@ class MainWidget(QWidget):
         self.qpcr_new_version_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.tableWidget.setItem(2, 3, self.qpcr_new_version_item)
 
-    def set_current_upper_version(self):
-        """设置上位机当前版本号"""
-        self.upper_current_version_item.setText(self.upper_data.get_current_version())
+    def set_component_status(self, component_type, status_str):
+        """设置上位机、中位机、QPCR的状态"""
+        if component_type == ComputerType.Upper:
+            self.upper_status_item.setText(status_str)
+        elif component_type == ComputerType.Middle:
+            self.middle_status_item.setText(status_str)
+        elif component_type == ComputerType.QPCR:
+            self.qpcr_status_item.setText(status_str)
 
-    def set_new_upper_version(self):
-        """设置上位机新版本号"""
-        self.upper_new_version_item.setText(self.upper_data.get_new_version())
+    def show_current_single_version(self, component_type):
+        """显示单个部件的当前版本号"""
+        if component_type == ComputerType.Upper:
+            self.upper_current_version_item.setText(self.upper_data.get_current_version())
+        elif component_type == ComputerType.Middle:
+            self.middle_current_version_item.setText(self.middle_data.get_current_version())
+        elif component_type == ComputerType.QPCR:
+            self.qpcr_current_version_item.setText(self.qpcr_data.get_current_version())
 
-    def set_current_middle_version(self):
-        """设置中位机当前版本号"""
-        self.middle_current_version_item.setText(self.middle_data.get_current_version())
+    def show_new_single_version(self, component_type):
+        """显示单个部件的最新版本号"""
+        if component_type == ComputerType.Upper:
+            self.upper_new_version_item.setText(self.upper_data.get_new_version())
+        elif component_type == ComputerType.Middle:
+            self.middle_new_version_item.setText(self.middle_data.get_new_version())
+        elif component_type == ComputerType.QPCR:
+            self.qpcr_new_version_item.setText(self.qpcr_data.get_new_version())
 
-    def set_new_middle_version(self):
-        """设置中位机新版本号"""
-        self.middle_new_version_item.setText(self.middle_data.get_new_version())
+    def show_current_version(self):
+        """显示上位机、中位机、QPCR当前版本号"""
+        self.show_current_single_version(ComputerType.Upper)
+        self.show_current_single_version(ComputerType.Middle)
+        self.show_current_single_version(ComputerType.QPCR)
 
-    def set_current_qpcr_version(self):
-        """设置QPCR当前版本号"""
-        self.qpcr_new_version_item.setText(self.middle_data.get_new_version())
+    def show_new_version(self):
+        """显示上位机、中位机、QPCR最新版本号"""
+        self.show_new_single_version(ComputerType.Upper)
+        self.show_new_single_version(ComputerType.Middle)
+        self.show_new_single_version(ComputerType.QPCR)
 
-    def set_new_qpcr_version(self):
-        """设置QPCR新版本号"""
-        self.qpcr_new_version_item.setText(self.middle_data.get_new_version())
 
     def get_checked_rows(self):
         """获取当前要升级的部件"""
@@ -280,43 +294,29 @@ class MainWidget(QWidget):
         signal_manager.sigSwitchPage.emit(1)
 
     @Slot()
-    def onSigUpdateUpperAddress(self, file_absolute_path):
-        """接收上位机升级路径"""
-        self.upper_data.update_file_info(file_absolute_path)
-        self.set_new_upper_version()
+    def onSigUpdateFileAddress(self, computer_type, file_absolute_path):
+        """接收上位机，中位机，QPCR升级路径"""
+        component = None
 
-        if self.upper_data.get_current_version() == self.upper_data.get_new_version():
-            self.upper_status_item.setText("无需升级")
-            self.checkBoxMap[ComputerType.Upper].setEnabled(False)
+        if computer_type == ComputerType.Upper:
+            component = self.upper_data
+        elif computer_type ==  ComputerType.Middle:
+            component = self.middle_data
+        elif computer_type ==  ComputerType.QPCR:
+            component = self.qpcr_data
+
+        component.update_file_info(file_absolute_path)
+        self.show_new_single_version(computer_type)
+
+        if component.get_current_version() == "获取失败":
+            self.set_component_status(computer_type, "异常")
+            self.checkBoxMap[computer_type].setEnabled(False)
+        elif component.get_current_version() == component.get_new_version():
+            self.set_component_status(computer_type, "无需升级")
+            self.checkBoxMap[computer_type].setEnabled(False)
         else:
-            self.upper_status_item.setText("可升级")
-            self.checkBoxMap[ComputerType.Upper].setEnabled(True)
-
-    @Slot()
-    def onSigUpdateMiddleAddress(self, file_absolute_path):
-        """接收中位机升级路径"""
-        self.middle_data.update_file_info(file_absolute_path)
-        self.set_new_middle_version()
-
-        if self.middle_data.get_current_version() == self.middle_data.get_new_version():
-            self.middle_status_item.setText("无需升级")
-            self.checkBoxMap[ComputerType.Middle].setEnabled(False)
-        else:
-            self.middle_status_item.setText("可升级")
-            self.checkBoxMap[ComputerType.Middle].setEnabled(True)
-
-    @Slot()
-    def onSigUpdateQPCRAddress(self, file_absolute_path):
-        """接收QPCR升级路径"""
-        self.qpcr_data.update_file_info(file_absolute_path)
-        self.set_new_qpcr_version()
-
-        if self.qpcr_data.get_current_version() == self.qpcr_data.get_new_version():
-            self.qpcr_status_item.setText("无需升级")
-            self.checkBoxMap[ComputerType.QPCR].setEnabled(False)
-        else:
-            self.qpcr_status_item.setText("可升级")
-            self.checkBoxMap[ComputerType.QPCR].setEnabled(True)
+            self.set_component_status(computer_type, "可升级")
+            self.checkBoxMap[computer_type].setEnabled(True)
 
     @Slot()
     def onSigExecuteScriptResult(self, machine_type, result):
@@ -329,15 +329,8 @@ class MainWidget(QWidget):
         elif result == ResultType.START:
             message1 = "正在升级中"
 
-        if machine_type == ComputerType.Upper:
-            self.set_current_upper_version()
-            self.upper_status_item.setText(message1)
-        elif machine_type == ComputerType.Middle:
-            self.set_current_middle_version()
-            self.middle_status_item.setText(message1)
-        elif machine_type == ComputerType.QPCR:
-            self.set_current_qpcr_version()
-            self.qpcr_status_item.setText(message1)
+        self.show_current_single_version(machine_type)
+        self.set_component_status(machine_type, message1)
 
 
 

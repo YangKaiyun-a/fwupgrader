@@ -14,13 +14,9 @@ class SignalManager(QObject):
     sigModuleReply = Signal(bool)
     # 发送固件文件名与其绝对路径
     sigUpdateLowerAddress = Signal(dict)
-    # 发送上位机文件路径
-    sigUpdateUpperAddress = Signal(str)
-    # 发送中位机文件路径
-    sigUpdateMiddleAddress = Signal(str)
-    # 发送QPCR文件路径
-    sigUpdateQPCRAddress = Signal(str)
-    # 上中位机、QPCR升级结果
+    # 发送上位机，中位机，QPCR文件路径
+    sigUpdateFileAddress = Signal(ComputerType, str)
+    # 上位机，中位机，QPCR文升级结果
     sigExecuteScriptResult = Signal(ComputerType, ResultType)
 
 
