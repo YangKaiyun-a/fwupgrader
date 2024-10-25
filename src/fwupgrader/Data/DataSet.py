@@ -64,11 +64,9 @@ def get_middle_current_version() -> str:
         sftp = ssh.open_sftp()
         with sftp.open(remote_version_file, 'r') as file:
             content = file.read().decode('utf-8')
-
-        for line in content.splitlines():
-            if line.startswith('version'):
-                version = line.split(':')[1].strip()
-                break
+        config = configparser.ConfigParser()
+        config.read_string(content)
+        version = config.get('GP_Version', 'version', fallback="获取失败")
     except Exception as e:
         print(f"中位机当前版本号获取失败：{e}")
     finally:
