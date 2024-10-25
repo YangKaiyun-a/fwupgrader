@@ -12,7 +12,7 @@ from src.fwupgrader.Data.Global import ComputerType, ResultType, computerType_na
 
 
 def get_current_version_from_file(component_type) -> str:
-    """获取当前的上、中位机版本号"""
+    """获取当前的上位机、中位机。QPCR的当前版本号"""
     version_file_path = ""
     version = "获取失败"
 

@@ -28,7 +28,7 @@ lower_module_datas = [
     (0x08, "核酸冷存", "cool_store"),
     (0x0C, "风道气压", "environment_monitor"),
     (0x22, "转运", "transporter"),
-    (0x0E, "Q龙门架夹爪", "xz_claw"),
+    (0x0E, "Q龙门架夹爪", "xz_claw")
 ]
 
 

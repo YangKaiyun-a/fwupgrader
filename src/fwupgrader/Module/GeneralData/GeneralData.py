@@ -7,7 +7,7 @@ from src.fwupgrader.Data.DataSet import (
     get_current_version_from_file,
     get_new_version_from_file
 )
-from src.fwupgrader.Data.Global import ComputerType
+from src.fwupgrader.Data.Global import ComputerType, computerType_name_map
 
 
 class GeneralData(QObject):
@@ -26,13 +26,7 @@ class GeneralData(QObject):
 
     def init_data(self):
         """初始化数据"""
-        if self.computer_type == ComputerType.Upper:
-            self.computer_type_name = '上位机'
-        elif self.computer_type == ComputerType.Middle:
-            self.computer_type_name = '中位机'
-        elif self.computer_type == ComputerType.QPCR:
-            self.computer_type_name = 'QPCR'
-
+        self.computer_type_name = computerType_name_map.get(self.computer_type)
         self.init_file_info()
 
     def init_file_info(self):
