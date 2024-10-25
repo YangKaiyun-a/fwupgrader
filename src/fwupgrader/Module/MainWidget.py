@@ -184,7 +184,7 @@ class MainWidget(QWidget):
 
     def init_current_qpcr_version(self):
         """初始化QPCR当前版本号"""
-        self.qpcr_current_version_item = QTableWidgetItem(self.middle_data.get_current_version())
+        self.qpcr_current_version_item = QTableWidgetItem(self.qpcr_data.get_current_version())
         self.qpcr_current_version_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.tableWidget.setItem(2, 2, self.qpcr_current_version_item)
 
