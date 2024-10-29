@@ -15,7 +15,6 @@ from PySide6.QtWidgets import (
 from src.fwupgrader.Data.DataSet import parse_update_file
 from src.fwupgrader.Data.SignalManager import signal_manager
 from src.fwupgrader.Module.MainWidget import MainWidget
-from src.fwupgrader.Module.Lower.LowerWiget import LowerWidget
 
 
 

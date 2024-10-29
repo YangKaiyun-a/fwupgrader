@@ -1,5 +1,7 @@
-import sys
+import os
+import struct
 
+import canopen
 from PySide6 import QtWidgets
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
@@ -8,10 +10,12 @@ from PySide6.QtWidgets import (
     QCheckBox, QTableWidgetItem, QVBoxLayout, QMessageBox
 )
 
-from src.fwupgrader.Data.Global import ComputerType, ResultType
+from src.fwupgrader.Data.DataSet import get_new_version_from_file
+from src.fwupgrader.Data.Global import ComponentType, ResultType, lower_module_datas
 from src.fwupgrader.Data.SignalManager import signal_manager
 from src.fwupgrader.Data.UpgradeThread import UpgradeThread
 from src.fwupgrader.Module.GeneralData.GeneralData import GeneralData
+from src.fwupgrader.Module.Lower.LowerData import LowerData
 
 
 class MainWidget(QWidget):
@@ -24,22 +28,51 @@ class MainWidget(QWidget):
         self.middle_data = None                     # 存储中位机升级数据
         self.qpcr_data = None                       # 存储QPCR升级数据
         self.btn_lower = None                       # 固件模块升级按钮
-        self.upper_current_version_item = None      # 表格中上位机当前版本号的item
-        self.middle_current_version_item = None     # 表格中中位机当前版本号的item
-        self.qpcr_current_version_item = None       # 表格中QPCR当前版本号的item
-        self.upper_new_version_item = None          # 表格中上位机新版本号的item
-        self.middle_new_version_item = None         # 表格中中位机新版本号的item
-        self.qpcr_new_version_item = None           # 表格中QPCR新版本号的item
         self.upper_status_item = None               # 表格中上位机状态的item
         self.middle_status_item = None              # 表格中中位机状态的item
         self.qpcr_status_item = None                # 表格中QPCR状态的item
         self.btn_update = None                      # 升级按钮
-        self.checkBoxMap = {}                       # 存储每个QCheckBox
-        self.data_Map = {}                          # ComputerType索引值与GeneralData的对应关系
+        self.checkBox_map = {}                      # 存储上位机、中位机、QPCR的QCheckBox
+        self.data_list = []                         # 根据索引值存储上位机、中位机、QPCR
+
+        self.centerNode = None
+        self.network = None                         # Can网络
+        self.lower_module_list = None               # 根据cob_id存储固件模块
+        self.checkBox_lower_map = {}                # 存储固件模块的QCheckBox
 
         self.init_data()
         self.init_ui()
         self.init_connect()
+
+    def init_data(self):
+        """初始化数据"""
+        self.initCanNetwork()
+
+        self.upper_data = GeneralData(ComponentType.Upper)
+        self.middle_data = GeneralData(ComponentType.Middle)
+        self.qpcr_data = GeneralData(ComponentType.QPCR)
+        self.data_list = [self.upper_data, self.middle_data, self.qpcr_data]
+
+    def initCanNetwork(self):
+        """初始化Can网络"""
+        self.network = canopen.Network()
+        # self.network.connect(channel="can0", bustype="socketcan")
+
+        # 获取当前文件所在目录的绝对路径
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+
+        # 创建一个本地节点，节点 ID 为 0x01，并加载 EDS 文件描述节点
+        self.centerNode = canopen.LocalNode(0x01, f"{current_dir}/template.eds")
+        self.network.add_node(self.centerNode)
+
+        # 设置一个回调函数，在收到 CANopen 网络写入数据时调用
+        self.centerNode.add_write_callback(self.on_write)
+
+        # 初始化固件模块
+        for module in enumerate(lower_module_datas):
+            # 创建每个固件，并根据cob_id存储在ModuleList容器中
+            data = LowerData(module[0], module[1], module[2], self.network)
+            self.lower_module_list[module[0]] = data
 
     def init_ui(self):
         """初始化ui"""
@@ -61,10 +94,6 @@ class MainWidget(QWidget):
         self.btn_update.clicked.connect(self.onBtnUpdateClicked)
         self.btn_update.setEnabled(False)
 
-        self.btn_lower = QPushButton("固件模块升级")
-        self.btn_lower.setFixedSize(135, 45)
-        self.btn_lower.clicked.connect(self.onBtnLowerClicked)
-
         button_hlayout.setSpacing(9)
         button_hlayout.addWidget(self.btn_update)
         button_hlayout.addWidget(self.btn_lower)
@@ -74,10 +103,13 @@ class MainWidget(QWidget):
 
     def init_tableWidget(self):
         """初始化表格"""
+        row_count = len(self.data_list) + len(self.lower_module_list)
+        tableWidget_height = row_count * 41 + 28
+
         self.tableWidget = QtWidgets.QTableWidget()
-        self.tableWidget.setFixedSize(1100, 151)
+        self.tableWidget.setFixedSize(1100, tableWidget_height)
         self.tableWidget.setColumnCount(5)
-        self.tableWidget.setRowCount(3)
+        self.tableWidget.setRowCount(row_count)
 
         self.tableWidget.setColumnWidth(0, 50)
         self.tableWidget.setColumnWidth(1, 200)
@@ -85,9 +117,9 @@ class MainWidget(QWidget):
         self.tableWidget.setColumnWidth(3, 370)
         self.tableWidget.setColumnWidth(4, 100)
 
-        self.tableWidget.setRowHeight(0, 41)
-        self.tableWidget.setRowHeight(1, 41)
-        self.tableWidget.setRowHeight(2, 41)
+        # 设置每行的高度
+        for row in range(row_count):
+            self.tableWidget.setRowHeight(row, 41)
 
         # 设置水平表头
         horizontal_headers = ["", "部件", "当前版本", "最新版本", "状态"]
@@ -101,7 +133,7 @@ class MainWidget(QWidget):
         self.tableWidget.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
 
         # 将第一列全设为QCheckBox
-        for row in range(self.tableWidget.rowCount()):
+        for row in range(row_count):
             checkbox = QCheckBox()
             checkbox.setEnabled(False)  # 默认不可勾选，等导入文件后才可勾选
             checkbox.clicked.connect(self.onCheckBoxClicked)
@@ -112,147 +144,92 @@ class MainWidget(QWidget):
             layout.setContentsMargins(0, 0, 0, 0)
             container_widget.setLayout(layout)
             self.tableWidget.setCellWidget(row, 0, container_widget)
-            self.checkBoxMap[ComputerType(row)] = checkbox
 
-        # 设置第二列
-        components = ["上位机", "中位机", "QPCR"]
-        for row, component in enumerate(components):
-            item = QTableWidgetItem(component)
-            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.tableWidget.setItem(row, 1, item)
+            if row <= ComponentType.QPCR.value:
+                self.checkBox_map[row] = checkbox
+            else:
+                lower_row_index = row - 3
+                if lower_row_index < len(lower_module_datas):
+                    self.checkBox_lower_map[lower_module_datas[lower_row_index][0]] = checkbox
 
-        # 设置第三列
-        self.init_current_version()
+        # 设置上位机、中位机、QPCR
+        for row, data in enumerate(self.data_list):
+            self.set_table_widget_item(row, data)
 
-        # 设置第四列
-        self.init_new_version()
-
-        # 设置第五列
-        self.upper_status_item = QTableWidgetItem("---")
-        self.upper_status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.tableWidget.setItem(0, 4, self.upper_status_item)
-
-        self.middle_status_item = QTableWidgetItem("---")
-        self.middle_status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.tableWidget.setItem(1, 4, self.middle_status_item)
-
-        self.qpcr_status_item = QTableWidgetItem("---")
-        self.qpcr_status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.tableWidget.setItem(2, 4, self.qpcr_status_item)
+        # 设置固件模块
+        for row, module in enumerate(self.lower_module_list, start=len(self.data_list) + 1):
+            self.set_table_widget_item(row, module)
 
         self.mainLayout.addWidget(self.tableWidget)
 
-    def init_data(self):
-        """初始化数据"""
-        self.upper_data = GeneralData(ComputerType.Upper)
-        self.middle_data = GeneralData(ComputerType.Middle)
-        self.qpcr_data = GeneralData(ComputerType.QPCR)
+    def set_table_widget_item(self, row, module):
+        # 第二列，显示部件中文名
+        item = QTableWidgetItem(module.get_name())
+        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.tableWidget.setItem(row, 1, item)
 
-        self.data_Map = {
-            ComputerType.Upper: self.upper_data,
-            ComputerType.Middle: self.middle_data,
-            ComputerType.QPCR: self.qpcr_data
-        }
+        # 第三列，显示当前版本
+        item = QTableWidgetItem(module.get_current_version())
+        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.tableWidget.setItem(row, 2, item)
+
+        # 第四列，显示最新版本
+        item = QTableWidgetItem(module.get_new_version())
+        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.tableWidget.setItem(row, 3, item)
+
+        # 第五列，设置状态
+        item = QTableWidgetItem("---")
+        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.tableWidget.setItem(row, 4, item)
 
     def init_connect(self):
         signal_manager.sigUpdateFileAddress.connect(self.onSigUpdateFileAddress)
+        signal_manager.sigUpdateLowerAddress.connect(self.onSigUpdateLowerAddress)
         signal_manager.sigExecuteScriptResult.connect(self.onSigExecuteScriptResult)
-
-    def init_current_version(self):
-        """设置当前版本设置表格第三列，当前版本号"""
-        self.init_current_upper_version()
-        self.init_current_middle_version()
-        self.init_current_qpcr_version()
-
-    def init_new_version(self):
-        """设置第四列，新版本号"""
-        self.init_new_upper_version()
-        self.init_new_middle_version()
-        self.init_new_qpcr_version()
-
-    def init_current_upper_version(self):
-        """初始化上位机当前版本号"""
-        self.upper_current_version_item = QTableWidgetItem(self.upper_data.get_current_version())
-        self.upper_current_version_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.tableWidget.setItem(0, 2, self.upper_current_version_item)
-
-    def init_current_middle_version(self):
-        """初始化中位机当前版本号"""
-        self.middle_current_version_item = QTableWidgetItem(self.middle_data.get_current_version())
-        self.middle_current_version_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.tableWidget.setItem(1, 2, self.middle_current_version_item)
-
-    def init_current_qpcr_version(self):
-        """初始化QPCR当前版本号"""
-        self.qpcr_current_version_item = QTableWidgetItem(self.qpcr_data.get_current_version())
-        self.qpcr_current_version_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.tableWidget.setItem(2, 2, self.qpcr_current_version_item)
-
-    def init_new_upper_version(self):
-        """初始化上位机新版本号"""
-        self.upper_new_version_item = QTableWidgetItem(self.upper_data.get_new_version())
-        self.upper_new_version_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.tableWidget.setItem(0, 3, self.upper_new_version_item)
-
-    def init_new_middle_version(self):
-        """初始化中位机新版本号"""
-        self.middle_new_version_item = QTableWidgetItem(self.middle_data.get_new_version())
-        self.middle_new_version_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.tableWidget.setItem(1, 3, self.middle_new_version_item)
-
-    def init_new_qpcr_version(self):
-        """初始化QPCR新版本号"""
-        self.qpcr_new_version_item = QTableWidgetItem(self.middle_data.get_new_version())
-        self.qpcr_new_version_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.tableWidget.setItem(2, 3, self.qpcr_new_version_item)
 
     def set_component_status(self, component_type, status_str):
         """设置上位机、中位机、QPCR的状态"""
-        if component_type == ComputerType.Upper:
+        if component_type == ComponentType.Upper:
             self.upper_status_item.setText(status_str)
-        elif component_type == ComputerType.Middle:
+        elif component_type == ComponentType.Middle:
             self.middle_status_item.setText(status_str)
-        elif component_type == ComputerType.QPCR:
+        elif component_type == ComponentType.QPCR:
             self.qpcr_status_item.setText(status_str)
 
     def show_current_single_version(self, component_type):
         """显示单个部件的当前版本号"""
-        if component_type == ComputerType.Upper:
-            self.upper_current_version_item.setText(self.upper_data.get_current_version())
-        elif component_type == ComputerType.Middle:
-            self.middle_current_version_item.setText(self.middle_data.get_current_version())
-        elif component_type == ComputerType.QPCR:
-            self.qpcr_current_version_item.setText(self.qpcr_data.get_current_version())
+        pass
 
     def show_new_single_version(self, component_type):
         """显示单个部件的最新版本号"""
-        if component_type == ComputerType.Upper:
-            self.upper_new_version_item.setText(self.upper_data.get_new_version())
-        elif component_type == ComputerType.Middle:
-            self.middle_new_version_item.setText(self.middle_data.get_new_version())
-        elif component_type == ComputerType.QPCR:
-            self.qpcr_new_version_item.setText(self.qpcr_data.get_new_version())
+        pass
 
     def show_current_version(self):
         """显示上位机、中位机、QPCR当前版本号"""
-        self.show_current_single_version(ComputerType.Upper)
-        self.show_current_single_version(ComputerType.Middle)
-        self.show_current_single_version(ComputerType.QPCR)
+        self.show_current_single_version(ComponentType.Upper)
+        self.show_current_single_version(ComponentType.Middle)
+        self.show_current_single_version(ComponentType.QPCR)
 
     def show_new_version(self):
         """显示上位机、中位机、QPCR最新版本号"""
-        self.show_new_single_version(ComputerType.Upper)
-        self.show_new_single_version(ComputerType.Middle)
-        self.show_new_single_version(ComputerType.QPCR)
+        self.show_new_single_version(ComponentType.Upper)
+        self.show_new_single_version(ComponentType.Middle)
+        self.show_new_single_version(ComponentType.QPCR)
 
-
-    def get_checked_rows(self):
+    def get_checked_component(self):
         """获取当前要升级的部件"""
-        checked_rows = []
-        for row, checkbox in self.checkBoxMap.items():
+        checked_component_list = []
+        for index, checkbox in self.checkBox_map.items():
             if checkbox.isChecked():
-                checked_rows.append(ComputerType(row))
-        return checked_rows
+                checked_component_list.append(index)
+
+        checked_lower_component_list = []
+        for index, checkbox in self.checkBox_lower_map.items():
+            if checkbox.isChecked():
+                checked_lower_component_list.append(index)
+
+        return checked_component_list, checked_lower_component_list
 
     @Slot()
     def onBtnUpdateClicked(self):
@@ -260,10 +237,21 @@ class MainWidget(QWidget):
         update_components = []
         error_message = []
 
-        for machine_type in self.get_checked_rows():
-            data_object = self.data_Map.get(machine_type)
+        checked_component_list, checked_lower_component_list = self.get_checked_component()
+
+        # 收集要升级的部件
+        for checked_component in checked_component_list:
+            data_object = self.data_list[checked_component]
             if data_object and not data_object.get_fw():
                 error_message.append(data_object.get_computer_type_name())
+            else:
+                update_components.append(data_object)
+
+        # 收集要升级的固件
+        for checked_lower_component in checked_lower_component_list:
+            data_object = self.lower_module_list[checked_lower_component]
+            if data_object and not data_object.get_fw():
+                error_message.append(data_object.get_name())
             else:
                 update_components.append(data_object)
 
@@ -282,41 +270,49 @@ class MainWidget(QWidget):
     @Slot()
     def onCheckBoxClicked(self):
         """每次勾选框状态变化都会触发"""
-        checked_count = sum(1 for checkbox in self.checkBoxMap.values() if checkbox.isChecked())
+        checked_count = sum(1 for checkbox in self.checkBox_map.values() if checkbox.isChecked())
         if checked_count == 0:
             self.btn_update.setEnabled(False)
         elif checked_count > 0:
             self.btn_update.setEnabled(True)
 
     @Slot()
-    def onBtnLowerClicked(self):
-        """下位机升级按钮槽函数"""
-        signal_manager.sigSwitchPage.emit(1)
-
-    @Slot()
     def onSigUpdateFileAddress(self, computer_type, file_absolute_path):
         """接收上位机，中位机，QPCR升级路径"""
-        component = None
-
-        if computer_type == ComputerType.Upper:
-            component = self.upper_data
-        elif computer_type ==  ComputerType.Middle:
-            component = self.middle_data
-        elif computer_type ==  ComputerType.QPCR:
-            component = self.qpcr_data
+        component = self.data_list[computer_type]
 
         component.update_file_info(file_absolute_path)
         self.show_new_single_version(computer_type)
 
         if component.get_current_version() == "获取失败":
             self.set_component_status(computer_type, "异常")
-            self.checkBoxMap[computer_type].setEnabled(False)
+            self.checkBox_map[computer_type].setEnabled(False)
         elif component.get_current_version() == component.get_new_version():
             self.set_component_status(computer_type, "无需升级")
-            self.checkBoxMap[computer_type].setEnabled(False)
+            self.checkBox_map[computer_type].setEnabled(False)
         else:
             self.set_component_status(computer_type, "可升级")
-            self.checkBoxMap[computer_type].setEnabled(True)
+            self.checkBox_map[computer_type].setEnabled(True)
+
+    @Slot()
+    def onSigUpdateLowerAddress(self, bin_file_dict):
+        """接收固件升级路径"""
+        if not bin_file_dict:
+            QMessageBox.warning(self, "警告", "固件文件解析为空，请检查路径！", QMessageBox.StandardButton.Ok)
+            return
+
+        for file_name, file_path in bin_file_dict.items():
+            prefix = file_name.split(".")[0]
+            new_version = get_new_version_from_file(ComponentType.Lower, file_name)
+            item = [data for data in lower_module_datas if data[2] == prefix]
+
+            if len(item) == 0:
+                continue
+
+            cid, _, _ = item[0]
+
+            # 更新每个固件的地址
+            self.lower_module_list[cid].on_file_update(file_path, new_version)
 
     @Slot()
     def onSigExecuteScriptResult(self, machine_type, result):
@@ -332,7 +328,16 @@ class MainWidget(QWidget):
         self.show_current_single_version(machine_type)
         self.set_component_status(machine_type, message1)
 
+    def on_write(self, index, subindex, od, data):
+        # 解包收到的二进制数据，将其解析为两个 16 位无符号整数，分别为 value 和 cob_id
+        value, cob_id = struct.unpack("HH", data)
 
+        print(f"codid {cob_id} index {hex(index)} subindex{hex(subindex)} value {value}")
+
+        for _, w in self.lower_module_list.items():
+            if w.in_process:
+                w.receive_module_reply(index, subindex, value)
+                break
 
 
 

@@ -1,26 +1,29 @@
 import configparser
+import hashlib
 import json
 import os
 import shutil
 import re
+import threading
 from pathlib import Path
 import pexpect
 import paramiko
-from duplicity.config import hostname
-from pysss import password
 
 from src.fwupgrader.Data.SignalManager import signal_manager
-from src.fwupgrader.Data.Global import ComputerType, ResultType, computerType_name_map, upper_address, middle_address, \
+from src.fwupgrader.Data.Global import ComponentType, ResultType, ComponentType_name_map, upper_address, middle_address, \
     qpcr_address
 
 
+success = False
+semaphore = threading.Semaphore(0)
+
 def get_current_version_from_file(component_type) -> str:
     """获取当前版本号"""
-    if component_type == ComputerType.Upper:
+    if component_type == ComponentType.Upper:
         return get_upper_current_version()
-    elif component_type == ComputerType.Middle:
+    elif component_type == ComponentType.Middle:
         return get_middle_current_version()
-    elif component_type == ComputerType.QPCR:
+    elif component_type == ComponentType.QPCR:
         return get_qpcr_current_version()
 
 def get_upper_current_version() -> str:
@@ -84,7 +87,7 @@ def get_new_version_from_file(computer_type, file_name) -> str:
     """从升级文件中获取版本号"""
     version_string = "获取失败"
 
-    if computer_type == ComputerType.QPCR:
+    if computer_type == ComponentType.QPCR:
         # 在file_name的同级目录中找到version.ini
         version_file_path = os.path.join(os.path.dirname(file_name), 'version.ini')
         if os.path.isfile(version_file_path):
@@ -109,17 +112,17 @@ def get_new_version_from_file(computer_type, file_name) -> str:
 def parse_upper_update_file(directory):
     """解析上位机升级文件"""
     file_absolute_path = match_file(directory, 'GPplus-V*')
-    signal_manager.sigUpdateFileAddress.emit(ComputerType.Upper, file_absolute_path)
+    signal_manager.sigUpdateFileAddress.emit(ComponentType.Upper, file_absolute_path)
 
 def parse_middle_update_file(directory):
     """解析中位机升级文件"""
     file_absolute_path = match_file(directory, 'GPinstall-V*')
-    signal_manager.sigUpdateFileAddress.emit(ComputerType.Middle, file_absolute_path)
+    signal_manager.sigUpdateFileAddress.emit(ComponentType.Middle, file_absolute_path)
 
 def parse_qpcr_update_file(directory):
     """解析QPCR升级文件和版本号"""
     file_absolute_path = match_file(directory, 'qpcr_upgrade.sh')
-    signal_manager.sigUpdateFileAddress.emit(ComputerType.QPCR, file_absolute_path)
+    signal_manager.sigUpdateFileAddress.emit(ComponentType.QPCR, file_absolute_path)
 
 def parse_lower_update_file(directory):
     """解析固件升级文件"""
@@ -143,61 +146,6 @@ def parse_update_file(directory):
     parse_qpcr_update_file(directory)
     parse_lower_update_file(directory)
 
-def execute_upper_script(directory):
-    """执行上位机升级脚本"""
-    print(f"即将进行上位机升级，升级文件位于：{directory}")
-
-    signal_manager.sigExecuteScriptResult.emit(ComputerType.Upper, ResultType.START)
-
-    backup_path = os.path.expanduser("~/GPplus_backup")
-    current_file = os.path.expanduser("~/GPplus")
-
-    # 备份文件
-    if not backup_current_version(backup_path, current_file):
-        #备份文件失败后终止升级
-        result_message = "备份原始文件失败，终止升级！"
-        print(result_message)
-        signal_manager.sigExecuteScriptResult.emit(ComputerType.Upper, False)
-        return
-
-    print("备份原始文件成功！")
-
-    try:
-        # 使用pexpect来模拟用户输入
-        child = pexpect.spawn(f'bash {directory}', encoding='utf-8')
-        child.expect(r'.*密码.*|.*password.*')
-        child.sendline('1')
-        child.expect(pexpect.EOF)
-        result_message = "上位机升级成功"
-        print(result_message)
-        signal_manager.sigExecuteScriptResult.emit(ComputerType.Upper, ResultType.SUCCESSED)
-    except Exception as e:
-        result_message = f"上位机升级失败：{str(e)}，即将回滚到上一个版本"
-        print(result_message)
-        signal_manager.sigExecuteScriptResult.emit(ComputerType.Upper, ResultType.FAILD)
-        rollback(current_file, backup_path)
-
-def execute_middle_script(directory):
-    """执行中位机升级脚本"""
-    print(f"执行中位机升级脚本：{directory}")
-
-def execute_qpcr_script(directory):
-    """执行QPCR升级脚本"""
-    print(f"执行QPCR升级脚本：{directory}")
-
-def execute_upgrade_script(update_components):
-    """执行升级脚本"""
-    for component in update_components:
-        # 这里要区分上位机、中位机、QPCR
-        directory = component.get_fw()
-        computer_type = component.get_computer_type()
-
-        if computer_type == ComputerType.Upper:
-            execute_upper_script(directory)
-        elif computer_type == ComputerType.Middle:
-            execute_middle_script(directory)
-        elif computer_type == ComputerType.QPCR:
-            execute_qpcr_script(directory)
 
 
 """功能函数"""

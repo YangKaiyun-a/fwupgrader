@@ -33,17 +33,17 @@ lower_module_datas = [
 
 
 # 区分中上位机的枚举类型
-class ComputerType(Enum):
+class ComponentType(Enum):
     Upper = 0
     Middle = 1
     QPCR = 2
     Lower = 3
 
-# 根据部件索引快速访问名称
-computerType_name_map = {
-    ComputerType.Upper: "上位机",
-    ComputerType.Middle: "中位机",
-    ComputerType.QPCR: "QPCR"
+# 根据部件索引快速访问名称，当前版本，最新版本
+ComponentType_name_map = {
+    ComponentType.Upper: "上位机",
+    ComponentType.Middle: "中位机",
+    ComponentType.QPCR: "QPCR"
 }
 
 # 升级过程中的返回类型

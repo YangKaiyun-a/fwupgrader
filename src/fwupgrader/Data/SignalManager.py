@@ -4,8 +4,6 @@ from src.fwupgrader.Data.Global import ComputerType, ResultType
 
 
 class SignalManager(QObject):
-    # 切换页面
-    sigSwitchPage = Signal(int)
     # 固件升级进度
     sigProcessPresent = Signal(int)
     # 固件升级完成
