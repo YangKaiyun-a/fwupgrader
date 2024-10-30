@@ -112,17 +112,17 @@ def get_new_version_from_file(computer_type, file_name) -> str:
 def parse_upper_update_file(directory):
     """解析上位机升级文件"""
     file_absolute_path = match_file(directory, 'GPplus-V*')
-    signal_manager.sigUpdateFileAddress.emit(ComponentType.Upper, file_absolute_path)
+    signal_manager.sigUpdateFileAddress.emit(ComponentType.Upper.value, file_absolute_path)
 
 def parse_middle_update_file(directory):
     """解析中位机升级文件"""
     file_absolute_path = match_file(directory, 'GPinstall-V*')
-    signal_manager.sigUpdateFileAddress.emit(ComponentType.Middle, file_absolute_path)
+    signal_manager.sigUpdateFileAddress.emit(ComponentType.Middle.value, file_absolute_path)
 
 def parse_qpcr_update_file(directory):
     """解析QPCR升级文件和版本号"""
     file_absolute_path = match_file(directory, 'qpcr_upgrade.sh')
-    signal_manager.sigUpdateFileAddress.emit(ComponentType.QPCR, file_absolute_path)
+    signal_manager.sigUpdateFileAddress.emit(ComponentType.QPCR.value, file_absolute_path)
 
 def parse_lower_update_file(directory):
     """解析固件升级文件"""

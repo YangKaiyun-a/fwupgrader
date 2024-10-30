@@ -128,7 +128,7 @@ class UpgradeThread(QThread):
             if not self.success:
                 break
 
-            # 等待应答信号，如果超时则终止
+            # 等待应答信号，应答信号由固件模块类内发出，如果超时则终止
             if not self.semaphore.acquire(timeout=10):
                 self.success = False
                 break

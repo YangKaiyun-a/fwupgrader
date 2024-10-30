@@ -1,6 +1,6 @@
 from PySide6.QtCore import QObject, Signal
 
-from src.fwupgrader.Data.Global import ComputerType, ResultType
+from src.fwupgrader.Data.Global import ComponentType, ResultType
 
 
 class SignalManager(QObject):
@@ -13,9 +13,9 @@ class SignalManager(QObject):
     # 发送固件文件名与其绝对路径
     sigUpdateLowerAddress = Signal(dict)
     # 发送上位机，中位机，QPCR文件路径
-    sigUpdateFileAddress = Signal(ComputerType, str)
+    sigUpdateFileAddress = Signal(int, str)
     # 上位机，中位机，QPCR文升级结果
-    sigExecuteScriptResult = Signal(ComputerType, ResultType)
+    sigExecuteScriptResult = Signal(int, ResultType)
 
 
 

@@ -21,18 +21,18 @@ from src.fwupgrader.Data.SignalManager import signal_manager
 class LowerData(QWidget):
     sig = Signal(bool)
 
-    def __init__(self, cob_id, name, tag, network):
+    def __init__(self, cob_id, name, network):
         super().__init__()
         self.component_type = ComponentType.Lower   # 区分上位机、中位机、QPCR、固件
         self.current_version = None                 # 当前版本
         self.new_version = None                     # 最新版本
         self.cob_id = cob_id                        # 设备ID，hex(self.cob_id)
-        self.name = name                            # 设备名称
+        self.component_type_name = name             # 设备名称
         self.fw = None                              # 固件文件路径
         self.in_process = False                     # 是否在升级中
         self.network = network                      # CAN网络
         self.remote = None                          # 远程节点
-
+        self.status = "--"                          # 状态
         self.init()
 
     def init(self):
@@ -64,9 +64,9 @@ class LowerData(QWidget):
         except Exception as e:
             print(e)
 
-        self.current_version.setText(ver)
+        self.current_version = ver
 
-    # 固件回复
+    # 固件回复后调用这个函数，发出信号释放线程信号量
     def receive_module_reply(self, index, subindex, value):
         signal_manager.sigModuleReply.emit(True)
 
@@ -74,16 +74,24 @@ class LowerData(QWidget):
     def on_file_update(self, path, new_version):
         self.clear_file_info()
         self.fw = path
-        self.new_version.setText(new_version)
-        print(f"更新的模块名称：{self.name}，版本号为：{self.new_version.text()}，路径为：{self.fw}")
+        self.new_version = new_version
+        print(f"更新的模块名称：{self.component_type_name}，版本号为：{self.new_version}，路径为：{self.fw}")
+
+        if self.current_version == "获取失败":
+            self.status = "未获取到当前版本"
+        else:
+            if self.new_version != self.current_version:
+                self.status = "可升级"
+            else:
+                self.status = "无需升级"
 
     def clear_file_info(self):
         self.fw = None
-        self.new_version.setText("Vxx.xx.xx.xxxx")
+        self.new_version = "Vxx.xx.xx.xxxx"
 
-    def get_name(self):
+    def get_component_type_name(self):
         """获取固件名称"""
-        return self.name
+        return self.component_type_name
 
     def get_current_version(self):
         """获取当前固件版本号"""
@@ -103,3 +111,7 @@ class LowerData(QWidget):
 
     def set_in_process(self, in_process):
         self.in_process = in_process
+
+    def get_status(self):
+        """获取升级状态"""
+        return self.status

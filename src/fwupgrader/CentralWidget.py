@@ -68,14 +68,9 @@ class CentralWidget(QWidget):
         main_vlayout.addWidget(content_widget, stretch=10)
 
         main_widget = MainWidget()
-        lower_widget = LowerWidget()
 
         self.content_stack.addWidget(main_widget)   # 索引 0
-        self.content_stack.addWidget(lower_widget)  # 索引 1
         self.content_stack.setCurrentIndex(0)
-
-        # 切换页面信号槽
-        signal_manager.sigSwitchPage.connect(self.onSigSwitchPage)
 
     @Slot()
     def onBtnImportClicked(self):
@@ -107,10 +102,3 @@ class CentralWidget(QWidget):
             self.btnBack.setText("退出")
         else:
             self.btnBack.setText("返回")
-
-    @Slot()
-    def onSigSwitchPage(self, index):
-        """切换页面"""
-        if 0 <= index < self.content_stack.count():
-            self.content_stack.widget(index).refresh_ui()
-            self.content_stack.setCurrentIndex(index)

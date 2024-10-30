@@ -1,13 +1,9 @@
-from PySide6.QtWidgets import (
-    QLabel,
-    QHBoxLayout
-)
-from PySide6.QtCore import Qt, QObject
+from PySide6.QtCore import QObject
 from src.fwupgrader.Data.DataSet import (
     get_current_version_from_file,
     get_new_version_from_file
 )
-from src.fwupgrader.Data.Global import ComponentType, componentType_name_map
+from src.fwupgrader.Data.Global import ComponentType, ComponentType_name_map
 
 
 class GeneralData(QObject):
@@ -19,6 +15,7 @@ class GeneralData(QObject):
         self.current_version = None             # 当前版本
         self.fw = None                          # 升级文件路径
         self.in_process = False                 # 是否在升级过程中
+        self.status = "--"                      # 状态
         self.init()
 
     def init(self):
@@ -26,7 +23,7 @@ class GeneralData(QObject):
 
     def init_data(self):
         """初始化数据"""
-        self.component_type_name = componentType_name_map.get(self.component_type)
+        self.component_type_name = ComponentType_name_map.get(self.component_type)
         self.init_file_info()
 
     def init_file_info(self):
@@ -43,10 +40,17 @@ class GeneralData(QObject):
 
     def update_file_info(self, file_absolute_path):
         """更新升级路径"""
-        self.init_file_info()
         self.fw = file_absolute_path
         self.new_version = get_new_version_from_file(self.component_type, file_absolute_path)
         print(f"获取到{self.component_type_name}最新版本为：{self.new_version}")
+
+        if self.current_version == "获取失败":
+            self.status = "未获取到当前版本"
+        else:
+            if self.new_version != self.current_version:
+                self.status = "可升级"
+            else:
+                self.status = "无需升级"
 
     def get_fw(self):
         """返回升级路径"""
@@ -55,11 +59,11 @@ class GeneralData(QObject):
     def set_in_process(self, in_process):
         self.in_process = in_process
 
-    def get_computer_type(self):
+    def get_component_type(self):
         """返回区分上位机、中位机、QPCR"""
         return self.component_type
 
-    def get_computer_type_name(self):
+    def get_component_type_name(self):
         """返回上位机、中位机、QPCR的字符串"""
         return self.component_type_name
 
@@ -71,3 +75,7 @@ class GeneralData(QObject):
         """返回当前版本"""
         # self.get_current_version_from_file()
         return self.current_version
+
+    def get_status(self):
+        """返回状态"""
+        return self.status
