@@ -1,19 +1,11 @@
 from PySide6.QtWidgets import (
     QWidget,
-    QLabel,
-    QPushButton,
-    QGridLayout,
-    QProgressBar,
-    QVBoxLayout,
-    QDialog,
-    QMessageBox,
 )
 
-from PySide6.QtCore import Qt, QThread, Slot, Signal
+from PySide6.QtCore import Signal
 import canopen
 import os
-import hashlib
-import threading
+
 
 from src.fwupgrader.Data.Global import ComponentType
 from src.fwupgrader.Data.SignalManager import signal_manager
