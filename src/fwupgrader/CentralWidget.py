@@ -72,7 +72,7 @@ class CentralWidget(QWidget):
         self.network.add_node(self.centerNode)
 
         # 设置一个回调函数，在收到 CANopen 网络写入数据时调用
-        self.centerNode.add_write_callback(self.on_write)
+        self.centerNode.add_write_callback(self.on_received_lower_message)
 
         # 初始化固件模块
         for index, module in enumerate(lower_module_datas):
@@ -207,6 +207,7 @@ class CentralWidget(QWidget):
         item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.tableWidget.setItem(row, 4, item)
 
+
     def init_connect(self):
         signal_manager.sigUpdateFileAddress.connect(self.onSigUpdateFileAddress)
         signal_manager.sigUpdateLowerAddress.connect(self.onSigUpdateLowerAddress)
@@ -226,6 +227,32 @@ class CentralWidget(QWidget):
 
         return checked_component_list, checked_lower_component_list
 
+    def on_received_lower_message(self, index, subindex, od, data):
+        # 解包收到的二进制数据，将其解析为两个 16 位无符号整数，分别为 value 和 cob_id
+        value, cob_id = struct.unpack("HH", data)
+
+        print(f"codid {cob_id} index {hex(index)} subindex{hex(subindex)} value {value}")
+
+        for _, w in self.lower_module_list.items():
+            if w.in_process:
+                w.receive_module_reply(index, subindex, value)
+                break
+
+    @Slot()
+    def onSigUpdateFileAddress(self, component_type, file_absolute_path):
+        """接收上位机，中位机，QPCR升级路径"""
+        component = self.data_list[component_type]
+        component.update_file_info(file_absolute_path)
+
+        if component.get_current_version() == "获取失败":
+            self.checkBox_map[component_type].setEnabled(False)
+        elif component.get_current_version() == component.get_new_version():
+            self.checkBox_map[component_type].setEnabled(False)
+        else:
+            self.checkBox_map[component_type].setEnabled(True)
+
+        self.init_tableWidget_item()
+
     @Slot()
     def onSigUpdateLowerAddress(self, bin_file_dict):
         """接收固件升级路径"""
@@ -242,46 +269,17 @@ class CentralWidget(QWidget):
                 continue
 
             cid, _, _ = item[0]
+            component = self.lower_module_list[cid]
 
             # 更新每个固件的地址
-            self.lower_module_list[cid].on_file_update(file_path, new_version)
+            component.update_file_info(file_path, new_version)
 
-        self.init_tableWidget_item()
-
-    def on_write(self, index, subindex, od, data):
-        # 解包收到的二进制数据，将其解析为两个 16 位无符号整数，分别为 value 和 cob_id
-        value, cob_id = struct.unpack("HH", data)
-
-        print(f"codid {cob_id} index {hex(index)} subindex{hex(subindex)} value {value}")
-
-        for _, w in self.lower_module_list.items():
-            if w.in_process:
-                w.receive_module_reply(index, subindex, value)
-                break
-
-    @Slot()
-    def onSigExecuteScriptResult(self, machine_type, result):
-        """升级结果槽函数"""
-        message1 = ""
-        if result == ResultType.SUCCESSED:
-            message1 = "升级成功"
-        elif result == ResultType.FAILD:
-            message1 = "升级失败"
-        elif result == ResultType.START:
-            message1 = "正在升级中"
-
-    @Slot()
-    def onSigUpdateFileAddress(self, computer_type, file_absolute_path):
-        """接收上位机，中位机，QPCR升级路径"""
-        component = self.data_list[computer_type]
-        component.update_file_info(file_absolute_path)
-
-        if component.get_current_version() == "获取失败":
-            self.checkBox_map[computer_type].setEnabled(False)
-        elif component.get_current_version() == component.get_new_version():
-            self.checkBox_map[computer_type].setEnabled(False)
-        else:
-            self.checkBox_map[computer_type].setEnabled(True)
+            if component.get_current_version() == "获取失败":
+                self.checkBox_lower_map[cid].setEnabled(False)
+            elif component.get_current_version() == component.get_new_version():
+                self.checkBox_lower_map[cid].setEnabled(False)
+            else:
+                self.checkBox_lower_map[cid].setEnabled(True)
 
         self.init_tableWidget_item()
 
@@ -319,11 +317,31 @@ class CentralWidget(QWidget):
 
         if not update_components:
             QMessageBox.warning(self, "警告", "请选择要升级的部件或固件", QMessageBox.StandardButton.Ok)
-            return 
+            return
 
         # 串行执行升级
         self.upgrade_thread = UpgradeThread(update_components)
         self.upgrade_thread.start()
+
+    @Slot()
+    def onSigExecuteScriptResult(self, component_type, cob_id, result):
+        """升级结果槽函数"""
+        status = ""
+        if result == ResultType.SUCCESSED:
+            status = "升级成功"
+        elif result == ResultType.FAILD:
+            status = "升级失败"
+        elif result == ResultType.START:
+            status = "正在升级中"
+
+        if not cob_id:
+            self.data_list[component_type].set_status(status)
+            self.data_list[component_type].get_current_version_from_file()
+        else:
+            self.lower_module_list[cob_id].set_status(status)
+            self.lower_module_list[cob_id].get_current_version_from_file()
+
+        self.init_tableWidget_item()
 
     @Slot()
     def onBtnBackClicked(self):

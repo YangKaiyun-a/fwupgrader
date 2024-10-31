@@ -45,7 +45,7 @@ class GeneralData(QObject):
         print(f"获取到{self.component_type_name}最新版本为：{self.new_version}")
 
         if self.current_version == "获取失败":
-            self.status = "未获取到当前版本"
+            self.status = "不可升级"
         else:
             if self.new_version != self.current_version:
                 self.status = "可升级"
@@ -79,3 +79,7 @@ class GeneralData(QObject):
     def get_status(self):
         """返回状态"""
         return self.status
+
+    def set_status(self, new_status):
+        """设置状态"""
+        self.status = new_status

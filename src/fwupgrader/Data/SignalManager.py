@@ -14,8 +14,8 @@ class SignalManager(QObject):
     sigUpdateLowerAddress = Signal(dict)
     # 发送上位机，中位机，QPCR文件路径
     sigUpdateFileAddress = Signal(int, str)
-    # 上位机，中位机，QPCR文升级结果
-    sigExecuteScriptResult = Signal(int, ResultType)
+    # 上位机，中位机，QPCR，固件升级结果，参数1：模块，参数2：固件cob_id，参数3：升级结果
+    sigExecuteScriptResult = Signal(int, int, ResultType)
 
 
 

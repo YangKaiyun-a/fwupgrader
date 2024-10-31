@@ -21,22 +21,22 @@ class UpgradeThread(QThread):
         for component in self.update_components:
             # 这里要区分上位机、中位机、QPCR、固件模块
             directory = component.get_fw()
-            computer_type = component.get_computer_type()
+            component_type = component.get_component_type()
 
-            if computer_type == ComponentType.Upper:
+            if component_type == ComponentType.Upper:
                 self.execute_upper_script(directory)
-            elif computer_type == ComponentType.Middle:
+            elif component_type == ComponentType.Middle:
                 self.execute_middle_script(directory)
-            elif computer_type == ComponentType.QPCR:
+            elif component_type == ComponentType.QPCR:
                 self.execute_qpcr_script(directory)
-            elif computer_type == ComponentType.Lower:
+            elif component_type == ComponentType.Lower:
                 self.execute_lower_update(component)
 
     def execute_upper_script(self, directory):
         """执行上位机升级脚本"""
         print(f"即将进行上位机升级，升级文件位于：{directory}")
 
-        signal_manager.sigExecuteScriptResult.emit(ComponentType.Upper, ResultType.START)
+        signal_manager.sigExecuteScriptResult.emit(ComponentType.Upper, 0, ResultType.START)
 
         backup_path = os.path.expanduser("~/GPplus_backup")
         current_file = os.path.expanduser("~/GPplus")
@@ -46,7 +46,7 @@ class UpgradeThread(QThread):
             # 备份文件失败后终止升级
             result_message = "备份原始文件失败，终止升级！"
             print(result_message)
-            signal_manager.sigExecuteScriptResult.emit(ComponentType.Upper, False)
+            signal_manager.sigExecuteScriptResult.emit(ComponentType.Upper, 0, False)
             return
 
         print("备份原始文件成功！")
@@ -59,11 +59,11 @@ class UpgradeThread(QThread):
             child.expect(pexpect.EOF)
             result_message = "上位机升级成功"
             print(result_message)
-            signal_manager.sigExecuteScriptResult.emit(ComponentType.Upper, ResultType.SUCCESSED)
+            signal_manager.sigExecuteScriptResult.emit(ComponentType.Upper, 0, ResultType.SUCCESSED)
         except Exception as e:
             result_message = f"上位机升级失败：{str(e)}，即将回滚到上一个版本"
             print(result_message)
-            signal_manager.sigExecuteScriptResult.emit(ComponentType.Upper, ResultType.FAILD)
+            signal_manager.sigExecuteScriptResult.emit(ComponentType.Upper, 0, ResultType.FAILD)
             rollback(current_file, backup_path)
 
     def execute_middle_script(self, directory):

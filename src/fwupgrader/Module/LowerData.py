@@ -62,15 +62,15 @@ class LowerData(QWidget):
     def receive_module_reply(self, index, subindex, value):
         signal_manager.sigModuleReply.emit(True)
 
-    # 更新地址
-    def on_file_update(self, path, new_version):
+    def update_file_info(self, path, new_version):
+        """更新升级路径"""
         self.clear_file_info()
         self.fw = path
         self.new_version = new_version
         print(f"更新的模块名称：{self.component_type_name}，版本号为：{self.new_version}，路径为：{self.fw}")
 
         if self.current_version == "获取失败":
-            self.status = "未获取到当前版本"
+            self.status = "不可升级"
         else:
             if self.new_version != self.current_version:
                 self.status = "可升级"
@@ -107,3 +107,7 @@ class LowerData(QWidget):
     def get_status(self):
         """获取升级状态"""
         return self.status
+
+    def set_status(self, new_status):
+        """设置状态"""
+        self.status = new_status
