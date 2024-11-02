@@ -1,7 +1,7 @@
 import os
 
 import pexpect
-from PySide6.QtCore import QThread
+from PySide6.QtCore import QThread, Slot
 import threading
 import hashlib
 from src.fwupgrader.Data.DataSet import backup_current_version, rollback
@@ -15,6 +15,7 @@ class UpgradeThread(QThread):
         self.update_components = update_components      # 存储当前需要升级的所有部件
         self.semaphore = threading.Semaphore(0)
         self.success = False
+        self.cob_id = None                              # 固件index
 
     def run(self):
         """执行升级脚本"""
@@ -78,8 +79,9 @@ class UpgradeThread(QThread):
         """执行固件升级脚本"""
         component.set_in_process(True)
         remote = component.get_remote()
+        self.cob_id = component.get_cob_id()
 
-        print(f"执行固件：{component.get_name()}升级")
+        print(f"执行固件：{component.get_component_type_name()}")
 
         # 读取固件文件，r：只读，b：二进制
         with open(component.get_fw(), "rb") as f:
@@ -93,18 +95,18 @@ class UpgradeThread(QThread):
             # 向远程设备发送MD5和大小
             print(f"发送MD5：{m.hexdigest()}")
             remote.sdo["iap"]["md5"].raw = m.digest()
-
             print(f"发送文件大小：{len(fw_data)} KB")
             remote.sdo["iap"]["size"].raw = len(fw_data)
-
             self.success = True
         except Exception as e:
             print("参数发送错误")
             self.success = False
+            self.cob_id = None
 
         # 如果参数发送失败，终止升级
         if not self.success:
-            signal_manager.sigProcessFinish.emit()
+            signal_manager.sigExecuteScriptResult.emit(ComponentType.Lower, 0, ResultType.FAILD)
+            self.cob_id = None
             return
 
         print("开始发送数据")
@@ -124,13 +126,22 @@ class UpgradeThread(QThread):
                 print(f"data: {f}")
             except Exception as e:
                 success = False
-
+                self.cob_id = None
             if not self.success:
                 break
 
             # 等待应答信号，应答信号由固件模块类内发出，如果超时则终止
             if not self.semaphore.acquire(timeout=10):
                 self.success = False
+                self.cob_id = None
                 break
 
-        signal_manager.sigProcessFinish.emit()
+        signal_manager.sigExecuteScriptResult.emit(ComponentType.Lower, 0, ResultType.SUCCESSED)
+
+    @Slot(bool)
+    def onSigModuleReply(self, cob_id, result):
+        if self.cob_id != cob_id:
+            return
+
+        self.success = result
+        self.semaphore.release()

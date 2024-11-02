@@ -190,7 +190,3 @@ def match_file(directory, condition) -> str:
     file = next(Path(directory).rglob(condition))
     file_absolute_path = str(file.resolve())
     return file_absolute_path
-
-if __name__ == "__main__":
-    path = os.path.expanduser("~/V01.03.01.1001/GPplus-V01.03.01.1001-d031decd4bcc8b584d9c92eefedd3a44c8d88c41.sh")
-    execute_upper_script(path)

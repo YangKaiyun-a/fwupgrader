@@ -1,5 +1,6 @@
 import os
 import struct
+from sqlite3 import connect
 
 import canopen
 from PySide6 import QtWidgets
@@ -233,10 +234,9 @@ class CentralWidget(QWidget):
 
         print(f"codid {cob_id} index {hex(index)} subindex{hex(subindex)} value {value}")
 
-        for _, w in self.lower_module_list.items():
-            if w.in_process:
-                w.receive_module_reply(index, subindex, value)
-                break
+        module = self.lower_module_list[cob_id]
+        if module.get_in_process():
+            module.receive_module_reply(index, subindex, value)
 
     @Slot()
     def onSigUpdateFileAddress(self, component_type, file_absolute_path):
@@ -275,7 +275,7 @@ class CentralWidget(QWidget):
             component.update_file_info(file_path, new_version)
 
             if component.get_current_version() == "获取失败":
-                self.checkBox_lower_map[cid].setEnabled(False)
+                self.checkBox_lower_map[cid].setEnabled(True)
             elif component.get_current_version() == component.get_new_version():
                 self.checkBox_lower_map[cid].setEnabled(False)
             else:
@@ -321,6 +321,7 @@ class CentralWidget(QWidget):
 
         # 串行执行升级
         self.upgrade_thread = UpgradeThread(update_components)
+        signal_manager.sigModuleReply.connect(self.upgrade_thread.onSigModuleReply)
         self.upgrade_thread.start()
 
     @Slot()

@@ -16,10 +16,10 @@ class LowerData(QWidget):
     def __init__(self, cob_id, name, network):
         super().__init__()
         self.component_type = ComponentType.Lower   # 区分上位机、中位机、QPCR、固件
+        self.component_type_name = name             # 设备名称
         self.current_version = None                 # 当前版本
         self.new_version = None                     # 最新版本
         self.cob_id = cob_id                        # 设备ID，hex(self.cob_id)
-        self.component_type_name = name             # 设备名称
         self.fw = None                              # 固件文件路径
         self.in_process = False                     # 是否在升级中
         self.network = network                      # CAN网络
@@ -58,9 +58,12 @@ class LowerData(QWidget):
 
         self.current_version = ver
 
-    # 固件回复后调用这个函数，发出信号释放线程信号量
-    def receive_module_reply(self, index, subindex, value):
-        signal_manager.sigModuleReply.emit(True)
+    def receive_module_reply(self, cob_id):
+        """固件回复后调用这个函数，发出信号释放线程信号量"""
+        if cob_id != self.cob_id:
+            return
+
+        signal_manager.sigModuleReply.emit(cob_id, True)
 
     def update_file_info(self, path, new_version):
         """更新升级路径"""
@@ -80,6 +83,10 @@ class LowerData(QWidget):
     def clear_file_info(self):
         self.fw = None
         self.new_version = "Vxx.xx.xx.xxxx"
+
+    def get_component_type(self):
+        """获取区分上位机、中位机、QPCR"""
+        return self.component_type
 
     def get_component_type_name(self):
         """获取固件名称"""
@@ -104,6 +111,9 @@ class LowerData(QWidget):
     def set_in_process(self, in_process):
         self.in_process = in_process
 
+    def get_in_process(self, in_process):
+        return self.in_process
+
     def get_status(self):
         """获取升级状态"""
         return self.status
@@ -111,3 +121,7 @@ class LowerData(QWidget):
     def set_status(self, new_status):
         """设置状态"""
         self.status = new_status
+
+    def get_cob_id(self):
+        """返回设备ID"""
+        return self.cob_id
