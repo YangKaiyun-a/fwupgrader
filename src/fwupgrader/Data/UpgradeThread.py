@@ -125,7 +125,7 @@ class UpgradeThread(QThread):
                 remote.sdo["iap"]["data"].raw = f
                 print(f"data: {f}")
             except Exception as e:
-                success = False
+                self.success = False
                 self.cob_id = None
             if not self.success:
                 break
@@ -140,6 +140,7 @@ class UpgradeThread(QThread):
 
     @Slot(bool)
     def onSigModuleReply(self, cob_id, result):
+        """接收固件回复，释放线程信号量"""
         if self.cob_id != cob_id:
             return
 
